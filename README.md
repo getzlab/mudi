@@ -33,9 +33,9 @@ adata = recipe(
 
 Examples and testing coming soon...
 
-[] Batch Integration
-[] Differential Expression
-[] Proportion Tests
-[] Plotting features
-[] QC plotting
-[] Integration with SCRINVEX
+- [ ] Batch Integration
+- [ ] Differential Expression
+- [ ] Proportion Tests
+- [ ] Plotting features
+- [ ] QC plotting
+- [ ] Integration with SCRINVEX
