@@ -32,6 +32,23 @@ adata = recipe(
 )
 
 ```
+
+#### Cell-Type Identification
+
+```python
+from mudi.markers import build_marker_set
+from mudi.markers import labeler
+
+# Find marker genes
+sc.tl.rank_genes_groups(adata, groupby='louvain')
+
+# Build marker set
+scores, aggr, labels = build_marker_set(adata, heart_markers, thresh=1e-2)
+
+# Assign cell-type
+adata.obs['cell_type'] = adata.obs['louvain'].apply(lambda x: labeler(labels,x))
+
+```
 ---
 
 Examples and testing coming soon...
