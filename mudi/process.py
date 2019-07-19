@@ -17,7 +17,12 @@ from MulticoreTSNE import MulticoreTSNE as mTSNE
 import sys
 import scrublet as scr
 
+from anndata import AnnData
 from inspect import signature
+
+from .utils import scanpy_adata_loader
+from .utils import score_doublets
+from .utils import score_cc_genes
 
 def bcs_by_group(obs, group='percent_mito', key='louvain', thresh=2, verbose=False):
     """
@@ -82,15 +87,36 @@ def filter_upper(adata, groups, **kwargs):
         set.intersection(*[set(bcs_by_group(adata.obs, group=g, **kwargs)) for g in groups])
         )
 
-def recipe(file_name, thresh=1.25, downstream=True, min_genes=200, \
-           min_cells=3, genome=None, groups=None, mito_thresh=None, \
-           regress_vars=None, regress_jobs=1, remove_doublets=False,
-           hvg=None, qc=False, **kwargs):
+def recipe(file_name, min_genes=200, min_cells=3, thresh=1.25, mito_thresh=None, \
+           groups=None, genome=None, regress_vars=None, regress_jobs=1, \
+           compute_doublets=True, remove_doublets=False, scrublet_key='batch',
+           hvg=None, qc=False, downstream=True, **kwargs):
     """
-    Recipe
-    ----------------------------
     Recipe for single-cell processing.
+    ----------------------------
+    Inputs:
+        - min_genes: minimum number of genes required for a cell
+        - min_cells: minimum number of cells for expression of a gene
+        - thresh: estimated threshold for qc-filtering
+        - groups: qc-metrics to threshold over (default is percent_mito)
+        - genome: genome build for loading scanpy object (usually not needed)
+        - regress_vars: variables to regress over
+            *** Note: this will subset adata.X to highly variable genes
+            *** Note: raw data will still be stores in adata.raw and adata.layers['counts']
+        - regress_jobs: n_jobs to use for regression if specified
+        - compute_doublets: run scrublet
+        - remove_doublets: remove doublets before downstream processing
+        - hvg: dictionary of keys specifying highly variable gene selection
+        - qc: if True, returns adata object pre-filtering before downstream processing
+            *** Note: good for easily computing qc-metrics
+        - downstream: if True, continues with downstream processing
+
+    Outputs:
+        - adata: AnnData Object
     """
+    # ---------------------------------
+    # Argument Helpers
+    # ---------------------------------
     if qc:
         min_cells = 0
         min_genes = 0
@@ -105,6 +131,12 @@ def recipe(file_name, thresh=1.25, downstream=True, min_genes=200, \
     if groups is None:
         groups = ['percent_mito']
 
+    if remove_doublets:
+        assert compute_doublets, 'Doublet removal specified but doublets are not being computed.'
+
+    # ---------------------------------
+    # Pipeline
+    # ---------------------------------
     if isinstance(file_name, AnnData):
         adata = file_name
     else:
@@ -121,11 +153,12 @@ def recipe(file_name, thresh=1.25, downstream=True, min_genes=200, \
         adata.obs['batch'] = '1'
 
     # Doublets
-    score_doublets(adata, key='batch')
+    if compute_doublets:
+        score_doublets(adata, key=scrublet_key)
 
-    if remove_doublets:
-        print("Dropping {} doublets".format(sum(adata.obs['doublet'])))
-        adata = adata[~adata.obs['doublet']]
+        if remove_doublets:
+            print("Dropping {} doublets".format(sum(adata.obs['doublet'])))
+            adata = adata[~adata.obs['doublet']]
 
     # Compute Mitochondrial + Ribo Genes
     mito_genes = adata.var_names.str.startswith('MT-')

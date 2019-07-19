@@ -18,11 +18,13 @@ import scanpy.external as sce
 import sys
 import scrublet as scr
 
+# ---------------------------------
+# Scanpy Helpers
+# ---------------------------------
 def scanpy_adata_loader(path, genome='GRCh38', verbose=True):
     """
     Loader function.
     ------------------
-
     Can handle lists of file/dir paths, a file (.h5) or a directory format.
     Use this to load/aggregate immediately into a scanpy object.
     """
@@ -56,24 +58,6 @@ def aggr_markers(adata, uns='rank_genes_groups', params=['names','scores','pvals
 
     return joint.loc[:,~joint.columns.duplicated()]
 
-def plot_adata_qc(adata, color_by='batch', figsize=(10,6)):
-    """
-    Plot AnnData QC
-    ------------------
-
-    Plot some useful QC plots.
-    Requires that sc.compute_qc_metrics is run first.
-    """
-    fig, axes = plt.subplots(2,2,figsize=figsize)
-
-    sc.pl.scatter(adata, x='n_counts', y='percent_mito',color=color_by,ax=axes[0,0], show=False)
-    sc.pl.scatter(adata, x='n_counts', y='n_genes',color=color_by,ax=axes[0,1], show=False)
-
-    sns.violinplot(data=adata.obs, y='log1p_n_genes_by_counts', x=color_by,ax=axes[1,0])
-    sns.violinplot(data=adata.obs, y='percent_mito', x=color_by,ax=axes[1,1])
-
-    plt.tight_layout()
-
 # ---------------------------------
 # Utilities
 # ---------------------------------
@@ -100,7 +84,7 @@ def score_cc_genes(adata, cc_genes_file=pkg_resources.resource_filename('mudi', 
 
     sc.tl.score_genes_cell_cycle(adata, s_genes_i, g2m_genes_i)
 
-def score_doublets(adata, key='batch'):
+def score_doublets(adata, key='batch', n_prin_comps=20, verbose=False):
     """
     Scrubber: wrapper for Scrublet.
     ------------------------------------
@@ -115,7 +99,7 @@ def score_doublets(adata, key='batch'):
 
     for batch in adata.obs[key].drop_duplicates().values:
         scrub = scr.Scrublet(adata[adata.obs[key]==batch].X)
-        _doublet_scores, _predicted_doublets = scrub.scrub_doublets()
+        _doublet_scores, _predicted_doublets = scrub.scrub_doublets(n_prin_comps=n_prin_comps, verbose=verbose)
         doublet_scores.append(_doublet_scores)
         predicted_doublets.append(_predicted_doublets)
 
