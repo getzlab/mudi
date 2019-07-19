@@ -90,7 +90,7 @@ def filter_upper(adata, groups, **kwargs):
 def recipe(file_name, min_genes=200, min_cells=3, thresh=1.25, mito_thresh=None, \
            groups=None, genome=None, regress_vars=None, regress_jobs=1, \
            compute_doublets=True, remove_doublets=False, scrublet_key='batch',
-           hvg=None, qc=False, downstream=True, **kwargs):
+           hvg=None, qc=False, downstream=True, bbknn=None, **kwargs):
     """
     Recipe for single-cell processing.
     ----------------------------
@@ -110,6 +110,8 @@ def recipe(file_name, min_genes=200, min_cells=3, thresh=1.25, mito_thresh=None,
         - qc: if True, returns adata object pre-filtering before downstream processing
             *** Note: good for easily computing qc-metrics
         - downstream: if True, continues with downstream processing
+        - bbknn: if specified, performs light-weight batch correction on the provided
+            variable
 
     Outputs:
         - adata: AnnData Object
@@ -206,7 +208,13 @@ def recipe(file_name, min_genes=200, min_cells=3, thresh=1.25, mito_thresh=None,
         sc.pp.scale(adata, max_value=10)
 
         sc.tl.pca(adata, svd_solver='arpack', use_highly_variable=True)
-        sc.pp.neighbors(adata)
+
+        if bbknn is not None:
+            # Light-weight batch correction
+            sce.pp.bbknn(adata, batch_key=bbknn)
+        else:
+            sc.pp.neighbors(adata)
+
         sc.tl.louvain(adata, resolution=1)
         sc.tl.umap(adata)
     return adata
