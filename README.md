@@ -1,6 +1,9 @@
 # mudi
 A collection of single-cell utilities and pipelines for the Getz Lab.
 
+
+![](./mudi.jpg)
+
 ---
 
 ### Requirements
