@@ -1,6 +1,6 @@
 import rpy2.robjects as robjects
 from rpy2.robjects import pandas2ri
-from anndata2ri import anndata2ri
+from ..repos.anndata2ri import anndata2ri
 
 import scanpy as sc
 import scanpy.external as sce

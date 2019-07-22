@@ -1,6 +1,6 @@
 import rpy2.robjects as robjects
 from rpy2.robjects import pandas2ri
-from anndata2ri import anndata2ri
+from ..repos.anndata2ri import anndata2ri
 
 pandas2ri.activate()
 anndata2ri.activate()
@@ -28,7 +28,7 @@ def pyscran(adata_i, resolution=0.5, hvg=None):
 
     Returns the anndata object.
     """
-    assert adata.layers['counts'], "Please provide raw counts in AnnData Object."
+    # assert adata_i.layers['counts'], "Please provide raw counts in AnnData Object."
 
     if hvg is None:
         hvg = {'min_mean':0.0125, 'max_mean':3, 'min_disp':0.5}
