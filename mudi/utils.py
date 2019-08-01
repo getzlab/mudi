@@ -1,13 +1,8 @@
 import numpy as np
 import h5py
 import scipy
-from scipy.sparse import csc_matrix
-from scipy.io import mmread
 import gc
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-from tqdm import tqdm
 import os
 import time
 import pkg_resources

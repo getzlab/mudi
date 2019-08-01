@@ -4,6 +4,7 @@ from ..repos.anndata2ri import anndata2ri
 
 import scanpy as sc
 import scanpy.external as sce
+import numpy as np
 
 pandas2ri.activate()
 anndata2ri.activate()

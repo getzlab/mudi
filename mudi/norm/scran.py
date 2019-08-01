@@ -7,6 +7,7 @@ anndata2ri.activate()
 
 import scanpy as sc
 import scanpy.external as sce
+import numpy as np
 
 scran = robjects.r('''
         scran <- function(M, groups, min.mean=0.1) {

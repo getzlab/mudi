@@ -17,7 +17,7 @@ def labeler(d,x):
     except:
         return 'n/a'
 
-def build_marker_set(adata, markers_df, metric='sum', thresh=1e-5, **kwargs):
+def build_marker_set(adata, markers_df, groupby='louvain', metric='sum', thresh=1e-5, key_added='cell_type', cell_type_idx='Cell-Type', gene_idx='Gene', tweaks=None, **kwargs):
     """
     Build Marker set.
     ---------------------
@@ -30,6 +30,11 @@ def build_marker_set(adata, markers_df, metric='sum', thresh=1e-5, **kwargs):
         - metric: metric for assigning cell-type
         - thresh: threshold for markers to consider
         - kwargs: inputs for aggr_markers
+        - key_added: key to add to adata object
+        - cell_type_idx: markers dataframe cell_type ID
+        - gene_id: markers dataframe gene ID
+        - tweaks: specific changes to label dict
+        - **kwargs: for sc.tl.rank_genes_groups call - any specific paramters for selecting marker genes
 
     Outputs:
         - scores: dataframe of scores that have the sum z-scores for each cell-type
@@ -39,13 +44,20 @@ def build_marker_set(adata, markers_df, metric='sum', thresh=1e-5, **kwargs):
             and what cell type it was ultimately labeled
         - labels: dictionary mapping from cluster to labeled cell-type
     """
-    markers = aggr_markers(adata, **kwargs)
+    if tweaks is None:
+        tweaks = {}
+
+    assert groupby in list(adata.obs), 'Please ensure {} is a field in AnnData object.'.format(groupby)
+
+    sc.tl.rank_genes_groups(adata, groupby=groupby, **kwargs)
+
+    markers = aggr_markers(adata)
     markers = markers[markers['pvals_adj']<thresh]
 
     d = {}
     dfs = list()
-    for cell_type in set(markers_df['Cell-Type']):
-        filt = markers[markers.names.isin(markers_df[markers_df['Cell-Type']==cell_type]['Gene'].values)]
+    for cell_type in set(markers_df[cell_type_idx]):
+        filt = markers[markers.names.isin(markers_df[markers_df[cell_type_idx]==cell_type][gene_idx].values)]
         filt['cell_type'] = cell_type #heck
         dfs.append(filt)
 
@@ -64,13 +76,15 @@ def build_marker_set(adata, markers_df, metric='sum', thresh=1e-5, **kwargs):
 
     # Labels
     labels = {key:scores.loc[[key],:].T.sort_values(key,ascending=False).index[0] for key in list(scores.index)}
+    labels.update(tweaks)
 
     # Add labeling
     aggr['label'] = aggr['cluster'].apply(lambda x: labels[x])
+    adata.obs[key_added] = adata.obs[groupby].apply(lambda x: labeler(labels, x))
 
     return scores, aggr, labels
 
-def sub_cluster_and_rename(adata, group, group_vars, markers, res=1, method='t-test_overestim_var', tweaks={}):
+def sub_cluster_and_rename(adata, group, group_vars, markers, new_name=None, res=1, method='t-test_overestim_var', plot_maps=True, **kwargs):
     """
     Subclusters & Rename
     ---------------------
@@ -82,30 +96,30 @@ def sub_cluster_and_rename(adata, group, group_vars, markers, res=1, method='t-t
         - group: grouping to do sub-clustering on (ex. louvain)
         - group_vars: sub-groups within grouping to do sub-clustering on (ex. ['1','2'] for louvain clusters 1 & 2)
         - markers: marker list
+        - new_name: new name for sub-clustered labels
         - res: resolution of louvain clustering
         - method: DE method for marker assignment
-        - tweaks: dictionary of specific edits to make to labeling {'tcell,1': 'tcell_cd4', 'tcell,2':'tcell_cd8'}
+        - kwargs:
+            - tweaks: dictionary of specific edits to make to labeling {'tcell,1': 'tcell_cd4', 'tcell,2':'tcell_cd8'}
+            (useful if assignment is incorrect for rare populations)
+
 
     Outputs:
         - genes: marker genes used to label clusters
     """
-    new_name = group+'_R'
+    if new_name is None:
+        new_name = group+'_R'
 
     # sub-cluster
     sc.tl.louvain(adata, resolution=res, restrict_to = (group, group_vars), key_added=new_name)
 
-    # compute umap + rank-genes
-    sc.pl.umap(adata, color=[new_name,])
-    sc.tl.rank_genes_groups(adata, new_name, method=method)
+    # plot UMAP
+    if plot_maps: sc.pl.umap(adata, color=[new_name])
 
-    # find markers
-    scores, genes, labels = build_marker_set(adata, markers)
+    # Build marker set and reassign
+    scores, genes, labels = build_marker_set(adata, markers, groupby=new_name, key_added=new_name, **kwargs)
 
-    # custom update if needed
-    labels.update(tweaks)
-
-    # reassign
-    adata.obs[new_name] = adata.obs[new_name].apply(lambda x: labeler(labels,x))
-    sc.pl.umap(adata, color=[new_name])
+    # Plot new maps
+    if plot_maps: sc.pl.umap(adata, color=[new_name])
 
     return genes

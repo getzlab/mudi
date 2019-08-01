@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='mudi',
-    python_requires='>3.6.0'
+    python_requires='>3.6.0',
     author='Shankara Anand',
     author_email='sanand@broadinstitute.org',
     description='MUDI: a collection of single-cell utilities. (Getz Lab).',
@@ -13,5 +13,8 @@ setup(
         "scanpy>=1.4.3",
         "rpy2>=3.0.5",
         "torch>=1.1.0"
+        "scrublet",
+        "multicoreTSNE",
+        "openpyxl"
     ]
 )

@@ -13,7 +13,6 @@ import time
 import scanpy as sc
 import scanpy.external as sce
 from sklearn.manifold import TSNE
-from MulticoreTSNE import MulticoreTSNE as mTSNE
 import sys
 import scrublet as scr
 
@@ -90,7 +89,7 @@ def filter_upper(adata, groups, **kwargs):
 def recipe(file_name, min_genes=200, min_cells=3, thresh=1.25, mito_thresh=None, \
            groups=None, genome=None, regress_vars=None, regress_jobs=1, \
            compute_doublets=True, remove_doublets=False, scrublet_key='batch',
-           hvg=None, qc=False, downstream=True, bbknn=None, **kwargs):
+           hvg=None, qc=False, downstream=True, bbknn=None, verbose=False, **kwargs):
     """
     Recipe for single-cell processing.
     ----------------------------
@@ -196,7 +195,11 @@ def recipe(file_name, min_genes=200, min_cells=3, thresh=1.25, mito_thresh=None,
     adata.raw = adata.copy()
 
     # Score cell-cycle
-    score_cc_genes(adata)
+    try:
+        score_cc_genes(adata)
+    except:
+        if verbose: print("Unable to compute cell-cycle genes.")
+        pass
 
     if downstream:
         sc.pp.highly_variable_genes(adata, **hvg)

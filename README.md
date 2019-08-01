@@ -36,18 +36,15 @@ adata = recipe(
 #### Cell-Type Identification
 
 ```python
-from mudi.markers import build_marker_set
-from mudi.markers import labeler
+from mudi.markers import build_marker_set, sub_cluster_and_rename
 
-# Find marker genes
-sc.tl.rank_genes_groups(adata, groupby='louvain')
+# Find marker genes, label clusters in each "groupby" group based on markers annotation
+# Stored in adata.obs['cell_type']
+scores, aggr, labels = build_marker_set(adata, heart_markers, groupby='louvain', key_added='cell_type' thresh=1e-2)
 
-# Build marker set
-scores, aggr, labels = build_marker_set(adata, heart_markers, thresh=1e-2)
-
-# Assign cell-type
-adata.obs['cell_type'] = adata.obs['louvain'].apply(lambda x: labeler(labels,x))
-
+# Sub-clustering can be done on broader categories
+# ex. this sub-clusters the "Myocardial Pericyte" cells and renames the newly created clusters
+_ = sub_cluster_and_rename(adata, 'cell_type', ['Myocardial Pericyte'], heart_markers)
 ```
 ---
 
