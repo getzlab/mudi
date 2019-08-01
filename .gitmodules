@@ -1,3 +1,6 @@
 [submodule "mudi/repos/anndata2ri"]
 	path = mudi/repos/anndata2ri
-	url = git@github.com:theislab/anndata2ri.git
+	url = https://github.com/theislab/anndata2ri.git
+[submodule "mudi/repos/SignatureAnalyzer-GPU"]
+	path = mudi/repos/SignatureAnalyzer-GPU
+	url = https://github.com/broadinstitute/SignatureAnalyzer-GPU.git
