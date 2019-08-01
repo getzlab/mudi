@@ -12,6 +12,16 @@ A collection of single-cell utilities and pipelines for the Getz Lab.
     * Seurat>=3.0.0
     * scran>=1.10.1
 
+#### Submodules
+
+`git clone --recursive https://github.com/broadinstitute/mudi.git`
+
+or if you have already cloned:
+
+`git submodule update --init --recursive`
+
+
+
 ---
 
 ### Usage
