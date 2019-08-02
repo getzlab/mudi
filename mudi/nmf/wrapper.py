@@ -80,7 +80,7 @@ def NMF(adata, input='raw', use_highly_variable=True, filter_ribo=True, filter_m
         # Inputs
         # ---------------------------------
         if input == 'raw':
-            df = pd.DataFrame(data=adata.raw.X.toarray(), index=adata.obs_names, columns=adata.var_names).T
+            df = pd.DataFrame(data=adata.raw.X.toarray(), index=adata.obs_names, columns=adata.raw.var_names).T
         elif input == 'count':
             assert adata.layers['counts'], 'Please save raw counts in adata.lyers["counts"]'
             df = pd.DataFrame(data=adata.layers['counts'].toarray(), index=adata.obs_names, columns=adata.var_names).T
