@@ -23,6 +23,10 @@ from .utils import scanpy_adata_loader
 from .utils import score_doublets
 from .utils import score_cc_genes
 
+# For Numba
+import warnings
+warnings.filterwarnings('ignore')
+
 def bcs_by_group(obs, group='percent_mito', key='louvain', thresh=2, verbose=False):
     """
     Barcodes by Group
