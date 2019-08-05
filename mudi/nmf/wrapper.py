@@ -26,29 +26,29 @@ def NMF(adata, input='raw', use_highly_variable=True, filter_ribo=True, filter_m
         AnnData wrapper for ARD-NMF.
         ------------------------
         Inputs
-            - adata: AnnData object
-            - input: either the raw object
-            - use_highly_variable: whether or not to use highly variable genes (recommended)
-            - filter_ribo: exclude ribosomal genes
-            - filter_mito: exclude mitochondrial genes
-            - K0: starting number of latent components
-            - objective: objective function for optimizaiton
-            - max_iter: maximum number of iterations for algorithm
-            - del_: n/a
-            - tolerance: stop point for optimization
-            - phi: dispersion parameter
-            - a: shape parameter
-            - b: shape parameter
-            - prior_on_W: L1 or L2
-            - prior_on_H: L1 or L2
-            - report_frequency: how often to print stats
-            - parameters: parameters file
-            - cut_norm
-            - cut_diff: difference between mean signature and rest of signatures
+            * adata: AnnData object
+            * input: either the raw object
+            * use_highly_variable: whether or not to use highly variable genes (recommended)
+            * filter_ribo: exclude ribosomal genes
+            * filter_mito: exclude mitochondrial genes
+            * K0: starting number of latent components
+            * objective: objective function for optimizaiton
+            * max_iter: maximum number of iterations for algorithm
+            * del_: n/a
+            * tolerance: stop point for optimization
+            * phi: dispersion parameter
+            * a: shape parameter
+            * b: shape parameter
+            * prior_on_W: L1 or L2
+            * prior_on_H: L1 or L2
+            * report_frequency: how often to print stats
+            * parameters: parameters file
+            * cut_norm
+            * cut_diff: difference between mean signature and rest of signatures
                 for marker selction
-            - active_thresh: threshold for a latent component's impact on signature
+            * active_thresh: threshold for a latent component's impact on signature
                 if the latent factor is less than this, it does not contribute
-            - inplace: whether or not to edit the AnnData object directly
+            * inplace: whether or not to edit the AnnData object directly
 
         Outputs
 

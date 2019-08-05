@@ -15,6 +15,7 @@ setup(
         "torch>=1.1.0"
         "scrublet",
         "multicoreTSNE",
-        "openpyxl"
+        "openpyxl",
+        "gprofiler"
     ]
 )

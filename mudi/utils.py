@@ -53,6 +53,23 @@ def aggr_markers(adata, uns='rank_genes_groups', params=['names','scores','pvals
 
     return joint.loc[:,~joint.columns.duplicated()]
 
+def get_uns(adata,tag):
+    """
+    Retrieve unstructured data stored in AnnData.
+    ------------------------
+    Inputs:
+        - adata: AnnData Object
+        - tag: name of key in adata.uns
+    Outputs:
+        - pd.DataFrame: formatted information in adata.uns
+
+    """
+    assert tag in adata.uns, "{} not found in adata.uns".format(tag)
+    try:
+        return pd.DataFrame(adata.uns[tag]['values'], index=adata.uns[tag]['rows'], columns=adata.uns[tag]['cols'])
+    except:
+        raise ValueError("Unable to return structured dataframe from data.uns[{}]".format(tag))
+
 # ---------------------------------
 # Utilities
 # ---------------------------------

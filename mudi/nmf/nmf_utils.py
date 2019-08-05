@@ -4,23 +4,6 @@ import pandas as pd
 import sys
 from tqdm import tqdm
 
-def get_uns(adata,tag):
-    """
-    Retrieve unstructured data stored in AnnData.
-    ------------------------
-    Inputs:
-        - adata: AnnData Object
-        - tag: name of key in adata.uns
-    Outputs:
-        - pd.DataFrame: formatted information in adata.uns
-
-    """
-    assert tag in adata.uns, "{} not found in adata.uns".format(tag)
-    try:
-        return pd.DataFrame(adata.uns[tag]['values'], index=adata.uns[tag]['rows'], columns=adata.uns[tag]['cols'])
-    except:
-        raise ValueError("Unable to return structured dataframe from data.uns[{}]".format(tag))
-
 def compute_phi(mu, var, beta):
     """
     Compute Phi
