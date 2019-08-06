@@ -3,6 +3,7 @@ import h5py
 import scipy
 from scipy.sparse import csc_matrix
 from scipy.io import mmread
+from scipy import sparse
 import gc
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -61,7 +62,7 @@ def bcs_by_group(obs, group='percent_mito', key='louvain', thresh=2, verbose=Fal
 
     return bcs
 
-def filter_upper(adata, groups, **kwargs):
+def filter_upper(adata, groups, verbose, **kwargs):
     """
     Filter Upper
     ----------------------------
@@ -87,7 +88,7 @@ def filter_upper(adata, groups, **kwargs):
     sc.tl.louvain(adata, resolution=1)
 
     return list(
-        set.intersection(*[set(bcs_by_group(adata.obs, group=g, **kwargs)) for g in groups])
+        set.intersection(*[set(bcs_by_group(adata.obs, group=g, verbose=verbose, **kwargs)) for g in groups])
         )
 
 def recipe(file_name, min_genes=200, min_cells=3, thresh=1.25, mito_thresh=None, \
@@ -144,6 +145,7 @@ def recipe(file_name, min_genes=200, min_cells=3, thresh=1.25, mito_thresh=None,
     # ---------------------------------
     if isinstance(file_name, AnnData):
         adata = file_name
+        adata.X = sparse.csr_matrix(adata.X)
     else:
         adata = scanpy_adata_loader(file_name, genome=genome)
 
@@ -178,7 +180,7 @@ def recipe(file_name, min_genes=200, min_cells=3, thresh=1.25, mito_thresh=None,
         return adata
 
     if thresh is not None:
-        adata = adata[adata.obs.index.isin(filter_upper(adata.copy(), groups, thresh=thresh, **kwargs))]
+        adata = adata[adata.obs.index.isin(filter_upper(adata.copy(), groups, thresh=thresh, verbose=verbose, **kwargs))]
 
     adata.layers['counts'] = adata.X.copy()
 
@@ -224,4 +226,10 @@ def recipe(file_name, min_genes=200, min_cells=3, thresh=1.25, mito_thresh=None,
 
         sc.tl.louvain(adata, resolution=1)
         sc.tl.umap(adata)
+
+    try:
+        adata.X = sparse.csr_matrix(adata.X)
+    except:
+        pass
+
     return adata

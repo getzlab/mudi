@@ -146,7 +146,7 @@ def NMF(adata, input='raw', use_highly_variable=True, filter_ribo=True, filter_m
             adata.uns['nmf_markers'] = _nmf_markers
             return
         else:
-            return H,W,markers,nmf_genes
+            return H,W,markers,gene_signatures
 
 
 
