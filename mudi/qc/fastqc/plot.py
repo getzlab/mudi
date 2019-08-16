@@ -26,5 +26,3 @@ def plot_fq_metric(df, hue='sample', ax=None, title=None, legend=True, **kwargs)
 
     for tick in ax.get_xticklabels():
         tick.set_rotation(90)
-
-    return fig
