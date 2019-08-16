@@ -1,1 +1,1 @@
-from fastqc.fqc import FastQC
+from .fastqc.fqc import FastQC
