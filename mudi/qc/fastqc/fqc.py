@@ -40,10 +40,6 @@ class FastQC(object):
         return pd.read_csv(StringIO(self.modules[self.map[assay]]),sep='\t', skiprows=n)
 
     @property
-    def assays(self):
-        return list(self.map.keys())
-
-    @property
     def metrics(self):
         return self.df('FastQC')
 
