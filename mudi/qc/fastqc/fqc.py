@@ -7,18 +7,24 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 class FastQC(object):
+    """
+    FastQC
+    ------------------------
+    Python class for interpreting FastQC output.
+    Reads in .zip file output from fastqc.
 
-    def __init__(self, dir_path):
-        """
-        Wraps and packages output from FastQC.
-        """
+    Example usage:
+        fqc = FastQC(<FILE_NAME>.zip)
+    """
+
+    def __init__(self, dir_path, verbose=False):
         self.path = dir_path
         self.name = '.'.join(dir_path.split('/')[-1].split('.')[:-1])
 
         self.sample = '_'.join(self.name.split('_')[:2])
         self.lane = self.name.split('_')[-4]
 
-        print(self.name,self.sample,self.lane)
+        if verbose: print(self.name,self.sample,self.lane)
 
         with zipfile.ZipFile(self.path,'r') as z:
             with z.open(os.path.join(self.name,'fastqc_data.txt')) as f:
@@ -32,6 +38,10 @@ class FastQC(object):
         Query dataframe.
         """
         return pd.read_csv(StringIO(self.modules[self.map[assay]]),sep='\t', skiprows=n)
+
+    @property
+    def assays(self):
+        return list(self.map.keys())
 
     @property
     def metrics(self):
@@ -88,28 +98,6 @@ class FastQC(object):
         _df['sample'] = self.sample
         _df['lane'] = self.lane
         return _df
-
-
-def plot_metric(df, hue='sample', ax=None, title=None, legend=True, **kwargs):
-    """
-    Takes output from the aggr_metric function and plots.
-    """
-    col_names = list(df)
-
-    if ax is None:
-        fig,ax = plt.subplots(figsize=(10,8))
-
-    sns.lineplot(data=df, x=col_names[0], y=col_names[1], ax=ax, sort=False, hue=hue)
-
-    if legend:
-        ax.legend(**kwargs)
-    else:
-        ax.get_legend().remove()
-
-    ax.set_title(title)
-
-    for tick in ax.get_xticklabels():
-        tick.set_rotation(90)
 
 def aggr_metric(list_of_fqcs, metric, n=2, cols=2):
     """
