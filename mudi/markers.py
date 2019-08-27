@@ -5,6 +5,7 @@ import os
 import scanpy as sc
 import scanpy.external as sce
 import sys
+from collections import defaultdict
 
 from .utils import aggr_markers
 
@@ -16,6 +17,46 @@ def labeler(d,x):
         return d[x]
     except:
         return 'n/a'
+
+def convert_marker_dict_to_df(marker_dict):
+    """
+    Converts marker dictionary format to a marker dataframe.
+
+    Example marker_dict:
+    --------------------------------------
+    {'tcell_activated': ['CD69', 'IL2RA'],
+     'tcell_effector': ['CD3D', 'B3GAT1', 'PDCD1', 'FAS', 'CCR7'],
+     'tcell_regulatory': ['CD4',
+      'IL2RA',
+      'FOXP3',
+      'SMAD3',
+      'STAT5A',
+      'STAT5B',
+      'IL10'],
+     'tcell_exhausted': ['CD3D',
+      'PDCD1',
+      'FAS',
+      'CCR7', .......
+
+    Example output:
+    --------------------------------------
+    Cell-Type	Gene
+    0	tcell_activated	CD69
+    1	tcell_activated	IL2RA
+    2	tcell_effector	CD3D
+    3	tcell_effector	B3GAT1
+    4	tcell_effector	PDCD1
+    5	tcell_effector	FAS
+    6	tcell_effector	CCR7
+    7	tcell_regulatory	CD4
+    8	tcell_regulatory	IL2RA
+
+    """
+    pairs = list()
+    for key in marker_dict:
+        for gene in marker_dict[key]:
+            pairs.append((key,gene))
+    return pd.DataFrame(pairs).rename(columns={0:'Cell-Type',1:'Gene'})
 
 def build_marker_set(adata, markers_df, groupby='louvain', metric='sum', thresh=1e-5, key_added='cell_type', cell_type_idx='Cell-Type', gene_idx='Gene', tweaks=None, **kwargs):
     """
@@ -55,12 +96,7 @@ def build_marker_set(adata, markers_df, groupby='louvain', metric='sum', thresh=
     markers = markers[markers['pvals_adj']<thresh]
 
     if isinstance(markers_df, dict):
-        pairs = list()
-        for key in markers_df:
-            for gene in markers_df[key]:
-                pairs.append((key,gene))
-
-        markers_df = pd.DataFrame(pairs).rename(columns={0:'Cell-Type',1:'Gene'})
+        markers_df = convert_marker_dict_to_df(markers_df)
 
     d = {}
     dfs = list()
@@ -131,3 +167,52 @@ def sub_cluster_and_rename(adata, group, group_vars, markers, new_name=None, res
     if plot_maps: sc.pl.umap(adata, color=[new_name])
 
     return genes
+
+def compile_df_de(adata, markers):
+    """
+    Compiles mapped markers to a de-gene dictionary and adds
+    this information into the resulting dataframe.
+
+    Args:
+        * adata: AnnData object with rank_genes_groups computed for a grouping
+        * markers: markers dataframe or dictionary for inputs
+
+    Returns:
+        * dataframe with marker genes including a "subtypes" column with all
+            overlapping subtypes
+    """
+    if isinstance(markers, dict):
+        markers = convert_marker_dict_to_df(markers)
+
+    df_de = aggr_markers(adata)
+    df_de['cluster'] = df_de.cluster.astype('category')
+
+    # Reverse Marker Mapping
+    # Map genes --> [putative_cell_types...,]
+    r_marker_mapping = defaultdict(list)
+    for idx,row in markers.iterrows():
+        r_marker_mapping[row['Gene']].append(row['Cell-Type'])
+
+    df_de['subtypes'] = df_de['names'].apply(lambda x: ','.join(r_marker_mapping[x]))
+    df_de['cluster'] = df_de['cluster'].apply(lambda x: x.replace('/',''))
+    df_de['cluster'] = df_de['cluster'].apply(lambda x: x.replace('?',''))
+    return df_de
+
+# ---------------------------------
+# Write to Excel file
+# ---------------------------------
+def to_xlsx(filename, df):
+    """
+    Write markers dataframe file to excel file.
+
+    Args:
+        * filename: name of output excel file
+        * df: marker dataframe
+            ** computed either by aggr_markers or compile_de_df
+    """
+    if not filename.endswith('.xlsx'):
+        filename = filename + '.xlsx'
+
+    with pd.ExcelWriter(filename) as writer:
+        for c in sorted(df.cluster.cat.categories, key=str):
+            df[df.cluster == c].set_index('no.').drop(columns='cluster').to_excel(writer, sheet_name=f'{c}')
