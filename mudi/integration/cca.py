@@ -1,12 +1,12 @@
 import rpy2.robjects as robjects
 from rpy2.robjects import pandas2ri
-from anndata2ri import anndata2ri
-
-import scanpy as sc
-import scanpy.external as sce
+from ..repos.anndata2ri import anndata2ri
 
 pandas2ri.activate()
 anndata2ri.activate()
+
+import scanpy as sc
+import scanpy.external as sce
 
 cca = robjects.r('''
     cca <- function(df, batch_ids) {

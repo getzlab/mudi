@@ -26,7 +26,7 @@ def build_marker_set(adata, markers_df, groupby='louvain', metric='sum', thresh=
 
     Inputs:
         - adata: scanpy anndata object
-        - markers_df: markers dataframe
+        - markers_df: markers dataframe or dictionary
         - metric: metric for assigning cell-type
         - thresh: threshold for markers to consider
         - kwargs: inputs for aggr_markers
@@ -53,6 +53,14 @@ def build_marker_set(adata, markers_df, groupby='louvain', metric='sum', thresh=
 
     markers = aggr_markers(adata)
     markers = markers[markers['pvals_adj']<thresh]
+
+    if isinstance(markers_df, dict):
+        pairs = list()
+        for key in markers_df:
+            for gene in markers_df[key]:
+                pairs.append((key,gene))
+
+        markers_df = pd.DataFrame(pairs).rename(columns={0:'Cell-Type',1:'Gene'})
 
     d = {}
     dfs = list()
