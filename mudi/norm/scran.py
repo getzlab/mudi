@@ -16,7 +16,7 @@ scran = robjects.r('''
         }
         ''')
 
-def pyscran(adata_i, resolution=0.5, hvg=None, log_norm=True):
+def pyscran(adata_i, resolution=0.5, hvg=None, log_norm=True, scran_key=None):
     """
     Wraps scran.
         See here for paper: https://doi.org/10.1186/s13059-016-0947-7
@@ -36,8 +36,11 @@ def pyscran(adata_i, resolution=0.5, hvg=None, log_norm=True):
 
     adata = adata_i.copy()
 
-    sc.pp.neighbors(adata)
-    sc.tl.louvain(adata, key_added='scran_groups', resolution=resolution)
+    if scran_key is None:
+        sc.pp.neighbors(adata)
+        sc.tl.louvain(adata, key_added='scran_groups', resolution=resolution)
+    else:
+        adata.obs['scran_groups'] = adata.obs[scran_key]
 
     adata.obs['size_factors'] = scran(
         adata.layers['counts'].toarray().astype(int).T,
