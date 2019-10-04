@@ -18,7 +18,7 @@ scran = robjects.r('''
         ''')
 
 def pyscran(
-    adata_i: AnnData
+    adata_i: AnnData,
     resolution: float=0.5,
     hvg: Union[dict, None] = None,
     log_norm: bool = True,
