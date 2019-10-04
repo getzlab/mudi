@@ -9,6 +9,7 @@ import scanpy as sc
 import scanpy.external as sce
 import numpy as np
 from typing import Union
+from anndata import AnnData
 
 scran = robjects.r('''
         scran <- function(M, groups, min.mean=0.1) {
