@@ -16,7 +16,7 @@ scran = robjects.r('''
         }
         ''')
 
-def pyscran(adata_i, resolution=0.5, hvg=None):
+def pyscran(adata_i, resolution=0.5, hvg=None, log_norm=True):
     """
     Wraps scran.
         See here for paper: https://doi.org/10.1186/s13059-016-0947-7
@@ -35,6 +35,8 @@ def pyscran(adata_i, resolution=0.5, hvg=None):
         hvg = {'min_mean':0.0125, 'max_mean':3, 'min_disp':0.5}
 
     adata = adata_i.copy()
+
+    sc.pp.neighbors(adata)
     sc.tl.louvain(adata, key_added='scran_groups', resolution=resolution)
 
     adata.obs['size_factors'] = scran(
@@ -43,7 +45,9 @@ def pyscran(adata_i, resolution=0.5, hvg=None):
     )
 
     adata.X = np.array(adata.layers['counts'] / adata.obs['size_factors'].values[:,np.newaxis])
-    sc.pp.log1p(adata)
-    sc.pp.highly_variable_genes(adata, **hvg)
+
+    if log_norm:
+        sc.pp.log1p(adata)
+        sc.pp.highly_variable_genes(adata, **hvg)
 
     return adata
