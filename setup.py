@@ -16,6 +16,8 @@ setup(
         "scrublet",
         "multicoreTSNE",
         "openpyxl",
-        "gprofiler"
+        "gprofiler",
+        "tzlocal",
+        "get_version"
     ]
 )
