@@ -8,6 +8,7 @@ anndata2ri.activate()
 import scanpy as sc
 import scanpy.external as sce
 import numpy as np
+from typing import Union
 
 scran = robjects.r('''
         scran <- function(M, groups, min.mean=0.1) {
@@ -16,7 +17,12 @@ scran = robjects.r('''
         }
         ''')
 
-def pyscran(adata_i, resolution=0.5, hvg=None, log_norm=True, scran_key=None):
+def pyscran(
+    adata_i: AnnData
+    resolution: float=0.5,
+    hvg: Union[dict, None] = None,
+    log_norm: bool = True,
+    scran_key: Union[str, None] = None):
     """
     Wraps scran.
         See here for paper: https://doi.org/10.1186/s13059-016-0947-7
@@ -25,9 +31,20 @@ def pyscran(adata_i, resolution=0.5, hvg=None, log_norm=True, scran_key=None):
 
     Uses scran to compute size factors, store these size factors as an observation for each cell.
     Scales the data by the size factors.
-    Log norms data and computes highly variable genes.
 
-    Returns the anndata object.
+    Args:
+        * adata_i: input AnnData object
+        * resolution: float describing the lovain clustering to do on the raw counts data for
+            selecting of scran groups
+        * hvg: dictionary with parameters for selecting highly variable genes; defaults
+            to Seurat settings
+        * log_norm: whether or not to automatically log-norm data
+        * scran_key: found in .obs; this will be used for scran groups if provided
+
+    Returns:
+        * adata: AnnData object with scran-normalized counts
+            Automatically returns log-normed w/ HVGs; if 'log_norm = False', will return
+            only the scran-normalized counts
     """
     # assert adata_i.layers['counts'], "Please provide raw counts in AnnData Object."
 
@@ -41,6 +58,10 @@ def pyscran(adata_i, resolution=0.5, hvg=None, log_norm=True, scran_key=None):
         sc.tl.louvain(adata, key_added='scran_groups', resolution=resolution)
     else:
         adata.obs['scran_groups'] = adata.obs[scran_key]
+
+    print(adata.obs.groupby('scran_groups').size())
+
+
 
     adata.obs['size_factors'] = scran(
         adata.layers['counts'].toarray().astype(int).T,
