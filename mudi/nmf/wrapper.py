@@ -4,274 +4,221 @@ import numpy as np
 import pandas as pd
 import sys
 import os
-import torch
 
-# NMF Engine
-sig_analyzer_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "repos/SignatureAnalyzer-GPU")
-sys.path.append(sig_analyzer_path)
-from ARD_NMF import ARD_NMF, run_method_engine
+import matplotlib.pyplot as plt
 
-# Relative Imports
-from .nmf_utils import compute_phi, nmf_normalize, nmf_scale, nmf_markers
+from signatureanalyzer import ardnmf
+from signatureanalyzer.utils import postprocess_msigs, get_nlogs_from_output, select_markers
+from signatureanalyzer.consensus import consensus_cluster
+from signatureanalyzer.plotting import k_dist, consensus_matrix
+from signatureanalyzer.plotting import marker_heatmap
 
-# ---------------------------------
-# NMF Wrapper
-# ---------------------------------
-def NMF(adata, input='raw', use_highly_variable=True, filter_ribo=True, filter_mito=True, \
-        K0=None, objective='poisson', max_iter=10000, del_=1, \
-        tolerance=1e-6, phi=None, a=10.0, b=None, prior_on_W='L1', prior_on_H='L1', \
-        report_frequency=100, active_thresh=1e-5, cut_norm=0.5, cut_diff=1.0,
-        inplace=True, verbose=False):
-        """
-        AnnData wrapper for ARD-NMF.
-        ------------------------
-        Inputs
-            * adata: AnnData object
-            * input: either the raw object
-            * use_highly_variable: whether or not to use highly variable genes (recommended)
-            * filter_ribo: exclude ribosomal genes
-            * filter_mito: exclude mitochondrial genes
-            * K0: starting number of latent components
-            * objective: objective function for optimizaiton
-            * max_iter: maximum number of iterations for algorithm
-            * del_: n/a
-            * tolerance: stop point for optimization
-            * phi: dispersion parameter
-            * a: shape parameter
-            * b: shape parameter
-            * prior_on_W: L1 or L2
-            * prior_on_H: L1 or L2
-            * report_frequency: how often to print stats
-            * parameters: parameters file
-            * cut_norm
-            * cut_diff: difference between mean signature and rest of signatures
-                for marker selction
-            * active_thresh: threshold for a latent component's impact on signature
-                if the latent factor is less than this, it does not contribute
-            * inplace: whether or not to edit the AnnData object directly
+"""
+ARD-NMF Wrapper.
 
-        Outputs
+See https://github.com/broadinstitute/getzlab-SignatureAnalyzer
+For more details about the method and implementation.
+"""
 
+def join_nmf_output_to_anndata(adata: AnnData, filepath: str, cut_norm:float = 0, cut_diff:float = 0.1):
+    """
+    Join ARD-NMF output to AnnData
+    -----------------------
+    Args:
+        * adata: AnnData object to join to
+        * filepath: output file path from signatureanalyzer
+        * cut_norm: marker selection param (signatureanalyzer.utils.select_markers)
+        * cut_diff: marker selection param (signatureanalyzer.utils.select_markers)
 
-        It is highly reccomended to use only highly variable genes for factorization.
-        Default parameters are to use highly variable genes and filter out mitochondrial
-        or ribosomal genes.
-        """
-        # ---------------------------------
-        # Select Genes for NMF
-        # ---------------------------------
-        if use_highly_variable:
-            assert 'highly_variable' in list(adata.var), 'Please compute highly variable genes.'
-            if verbose: print("Using {} highly variable genes.".format(sum(adata.var.highly_variable)))
-            genes_for_nmf = set(adata.var[adata.var['highly_variable']].index)
-        else:
-            genes_for_nmf = set(adata.var.index)
+    Returns:
+        * None (edits adata directly)
+    """
+    # Load Results
+    H = pd.read_hdf(filepath,"H")
+    X = pd.read_hdf(filepath,"X")
+    W = pd.read_hdf(filepath,"W")
+    consensus_cluster = pd.read_hdf(filepath,"consensus")
+    markers,signatures = select_markers(X, W, H, cut_norm=cut_norm, cut_diff=cut_diff)
 
-        if filter_mito:
-            mito_genes = {x for x in genes_for_nmf if x.startswith('MT-')}
-            if verbose: print("Filtering {} mito genes.".format(len(mito_genes)))
-            genes_for_nmf -= mito_genes
-        if filter_ribo:
-            ribo_genes = {x for x in genes_for_nmf if x.startswith('RPS') or x.startswith('RPL')}
-            if verbose: print("Filtering {} ribo genes.".format(len(ribo_genes)))
-            genes_for_nmf -= ribo_genes
+    # Join to Obs
+    adata.obs = adata.obs.join(H.join(consensus_cluster))
+    adata.obs['max_id'] = adata.obs['max_id'].astype('category')
+    adata.obs['clusters'] = adata.obs['clusters'].astype('category')
+    adata.obs = adata.obs.rename(columns={'max_id':'nmf_id', 'clusters':'consensus_cluster'})
 
-        # ---------------------------------
-        # Inputs
-        # ---------------------------------
-        if input == 'raw':
-            df = pd.DataFrame(data=adata.raw.X.toarray(), index=adata.obs_names, columns=adata.raw.var_names).T
-        elif input == 'count':
-            assert adata.layers['counts'], 'Please save raw counts in adata.lyers["counts"]'
-            df = pd.DataFrame(data=adata.layers['counts'].toarray(), index=adata.obs_names, columns=adata.var_names).T
+    adata.uns['signatures'] = list(H)[:-3]
+    adata.obsm['X_nmf'] = H.iloc[:,:-3].values
 
-        df = df.loc[genes_for_nmf]
+    # W matrix
+    _nmf_genes = {}
+    _nmf_genes['cols'] = list(signatures)
+    _nmf_genes['rows'] = signatures.index
+    _nmf_genes['values'] = signatures.values
+    adata.uns['nmf_genes'] = _nmf_genes
 
-        if objective == 'poisson':
-            Beta = 1
-        elif objective == 'gaussian':
-            Beta = 2
-        else:
-            ValueError("Objective should be either 'gaussian' or 'poisson'")
+    # Marker genes
+    _nmf_markers = {}
+    _nmf_markers['cols'] = list(markers)
+    _nmf_markers['rows'] = markers.index
+    _nmf_markers['values'] = markers.values
+    adata.uns['nmf_markers'] = _nmf_markers
 
-        data = ARD_NMF(df, objective)
-        channel_names = data.channel_names
-        sample_names = data.sample_names
+def NMF(
+    adata: AnnData,
+    nruns: int = 10,
+    outdir: str = '.',
+    input_type: str = 'raw',
+    use_highly_variable: bool = True,
+    filter_ribo: bool = True,
+    filter_mito: bool = True,
+    inplace: bool = True,
+    verbose: bool = False,
+    **nmf_kwargs
+    ):
+    """
+    AnnData wrapper for ARD-NMF.
+    ------------------------
+    Inputs:
+        * adata: AnnData object
+        * nruns: number of runs of NMF to complete
+        * outdir: path (str) where to output ARD-NMF results
+        * input_type: what AnnData input to use
+            * 'raw': normalized in adata.raw
+            * 'X': X
+            * 'counts': raw counts saved in adata.layers['counts']
+                * any input saved in adata.layers
+        * use_highly_variable: whether or not to use highly variable genes
+            (recommended)
+        * filter_ribo: exclude ribosomal genes (default: True)
+        * filter_mito: exclude mitochondrial genes (default: True)
+        * inplace: whether or not to edit the AnnData object directly
+            * False: returns H,W,markers,signatures (4 pd.DataFrame objects)
+        * verbose
+        * nmf_kwargs: passed to signatureanalyzer.ardnmf
 
-        if phi is None:
-            phi = compute_phi(np.mean(df.values), np.var(df.values), Beta)
+    Outputs:
+        * Depends
 
-        # ---------------------------------
-        # Run NMF
-        # ---------------------------------
-        W, H, cost = run_method_engine(
-            data, \
-            a, \
-            phi, \
-            b, \
-            Beta, \
-            prior_on_W, \
-            prior_on_H, \
-            K0, \
-            tolerance, \
-            max_iter \
+    _ note _
+    It is highly reccomended to use only highly variable genes for factorization.
+    Default parameters are to use highly variable genes and filter out mitochondrial
+    or ribosomal genes.
+    """
+    if outdir is not ".":
+        print("   * Creating output dir at {}".format(outdir))
+        os.makedirs(outdir, exist_ok=True)
+
+    # ---------------------------------
+    # Select Genes for NMF
+    # ---------------------------------
+    if use_highly_variable:
+        assert 'highly_variable' in list(adata.var), 'Please compute highly variable genes.'
+        print("   * Using {} highly variable genes.".format(sum(adata.var.highly_variable)))
+        genes_for_nmf = set(adata.var[adata.var['highly_variable']].index)
+    else:
+        genes_for_nmf = set(adata.var.index)
+
+    if filter_mito:
+        mito_genes = {x for x in genes_for_nmf if x.startswith('MT-')}
+        print("   * Filtering {} mito genes.".format(len(mito_genes)))
+        genes_for_nmf -= mito_genes
+    if filter_ribo:
+        ribo_genes = {x for x in genes_for_nmf if x.startswith('RPS') or x.startswith('RPL')}
+        print("   * Filtering {} ribo genes.".format(len(ribo_genes)))
+        genes_for_nmf -= ribo_genes
+
+    # Input type
+    if input_type == 'raw':
+        df = pd.DataFrame(data=adata.raw.X.toarray(), index=adata.obs_names, columns=adata.raw.var_names).T
+    elif input_type == 'X':
+        df = pd.DataFrame(data=adata.X.toarray(), index=adata.obs_names, columns=adata.raw.var_names).T
+    else:
+        assert input_type in adata.layers, "Please save input in adata.layers['{}']".format(input_type)
+        df = pd.DataFrame(data=adata.layers['counts'].toarray(), index=adata.obs_names, columns=adata.var_names).T
+
+    matrix = df.loc[genes_for_nmf]
+
+    # ---------------------------------
+    # ARD-NMF
+    #
+    # Code chunk copied from
+    # https://github.com/broadinstitute/getzlab-SignatureAnalyzer/blob/master/signatureanalyzer/signatureanalyzer.py
+    # ------------------------------------------------------------------{
+    print("   * Saving ARD-NMF outputs to {}".format(os.path.join(outdir,'nmf_output.h5')))
+    store = pd.HDFStore(os.path.join(outdir,'nmf_output.h5'),'w')
+
+    print("   * Running ARD-NMF...")
+    for n_iter in range(nruns):
+        store['X'] = matrix
+
+        res = ardnmf(
+            matrix,
+            tag="\t{}/{}: ".format(n_iter,nruns-1),
+            verbose=verbose,
+            **nmf_kwargs
         )
 
-        W, H, nsig = nmf_normalize(W, H, active_thresh=active_thresh)
-        sig_names = [str(i) for i in range(1,nsig+1)]
-        W = pd.DataFrame(data=W, index=channel_names, columns=sig_names)
-        H = pd.DataFrame(data=H, index=sig_names, columns=sample_names)
+        lam = pd.DataFrame(data=res["lam"], columns=["lam"])
+        lam.index.name = "K0"
 
-        W,H = nmf_scale(W,H)
-        markers, gene_signatures = nmf_markers(df,W,H,cut_norm=cut_norm,cut_diff=cut_diff)
+        store["run{}/H".format(n_iter)] = res["H"]
+        store["run{}/W".format(n_iter)] = res["W"]
+        store["run{}/lam".format(n_iter)] = lam
+        store["run{}/Hraw".format(n_iter)] = res["Hraw"]
+        store["run{}/Wraw".format(n_iter)] = res["Wraw"]
+        store["run{}/markers".format(n_iter)] = res["markers"]
+        store["run{}/signatures".format(n_iter)] = res["signatures"]
+        store["run{}/log".format(n_iter)] = res["log"]
 
-        if inplace:
-            adata.obs = adata.obs.join(H)
-            adata.obs['max_id'] = adata.obs['max_id'].astype('category')
-            adata.obs = adata.obs.rename(columns={'max_id':'nmf'})
+    store.close()
 
-            adata.uns['signatures'] = list(H)[:-3]
-            adata.obsm['X_nmf'] = H.iloc[:,:-3].values
+    # Select Best Result
+    aggr = get_nlogs_from_output(os.path.join(outdir,'nmf_output.h5'))
+    max_k = aggr.groupby("K").size().idxmax()
+    max_k_iter = aggr[aggr['K']==max_k].shape[0]
+    best_run = int(aggr[aggr['K']==max_k].obj.idxmin())
+    print("   * Run {} had lowest objective with mode (n={:g}) K = {:g}.".format(best_run, max_k_iter, aggr.loc[best_run]['K']))
 
-            _nmf_genes = {}
-            _nmf_genes['cols'] = list(gene_signatures)
-            _nmf_genes['rows'] = gene_signatures.index
-            _nmf_genes['values'] = gene_signatures.values
-            adata.uns['nmf_genes'] = _nmf_genes
+    store = pd.HDFStore(os.path.join(outdir,'nmf_output.h5'),'a')
+    store["H"] = store["run{}/H".format(best_run)]
+    store["W"] = store["run{}/W".format(best_run)]
+    store["lam"] = store["run{}/lam".format(best_run)]
+    store["Hraw"] = store["run{}/Hraw".format(best_run)]
+    store["Wraw"] = store["run{}/Wraw".format(best_run)]
+    store["markers"] = store["run{}/markers".format(best_run)]
+    store["signatures"] = store["run{}/signatures".format(best_run)]
+    store["log"] = store["run{}/log".format(best_run)]
+    store["aggr"] = aggr
+    store.close()
 
-            _nmf_markers = {}
-            _nmf_markers['cols'] = list(markers)
-            _nmf_markers['rows'] = markers.index
-            _nmf_markers['values'] = markers.values
-            adata.uns['nmf_markers'] = _nmf_markers
-            return
-        else:
-            return H,W,markers,gene_signatures
+    # Plots
+    print("   * Saving report plots to {}".format(outdir))
 
+    H = pd.read_hdf(os.path.join(outdir,'nmf_output.h5'), "H")
+    X = pd.read_hdf(os.path.join(outdir,'nmf_output.h5'), "X")
+    signatures = pd.read_hdf(os.path.join(outdir,'nmf_output.h5'), "signatures")
 
+    _ = k_dist(np.array(aggr.K, dtype=int))
+    plt.savefig(os.path.join(outdir, "k_dist.pdf"), dpi=100, bbox_inches='tight')
 
-# # ---------------------------------
-# # NMF Wrapper Class
-# # ---------------------------------
-# class NMF(object):
-#     """
-#     AnnData wrapper for ARD-NMF.
-#
-#     Inputs
-#         - adata: AnnData object
-#         - K0: starting number of latent components
-#         - objective: objective function for optimizaiton
-#         - max_iter: maximum number of iterations for algorithm
-#         - del_: n/a
-#         - tolerance: stop point for optimization
-#         - phi: dispersion parameter
-#         - a
-#         - b
-#         - prior_on_W
-#         - prior_on_H
-#
-#
-#
-#     It is highly reccomended to use only highly variable genes for factorization.
-#     Default parameters are to use highly variable genes and filter out mitochondrial
-#     or ribosomal genes.
-#
-#
-#     """
-#
-#     def __init__(self, adata, use_highly_variable=True, filter_ribo=True, filter_mito=True, raw=False, verbose=False, K0=None, objective='poisson', max_iter=10000, del_=1, tolerance=1e-6, phi=None, a=10.0, b=None, prior_on_W='L1', prior_on_H='L1', report_frequency=100, parameters=None, dtype='Float32', active_thresh=1e-5, num_processes='auto'):
-#         """
-#         Parse input to run NMF.
-#
-#         """
-#         if use_highly_variable:
-#             if verbose: print("Using {} highly variable genes.".format(sum(adata.var.highly_variable)))
-#             genes_for_nmf = set(adata.var[adata.var['highly_variable']].index)
-#         else:
-#             genes_for_nmf = set(adata.var.index)
-#
-#         if filter_mito:
-#             mito_genes = {x for x in adata.var_names if x.startswith('MT-')}
-#             if verbose: print("Filtering {} mito genes.".format(len(mito_genes)))
-#             genes_for_nmf -= mito_genes
-#         if filter_ribo:
-#             ribo_genes = {x for x in adata.var_names if x.startswith('RPS') or x.startswith('RPL')}
-#             if verbose: print("Filtering {} ribo genes.".format(len(ribo_genes)))
-#             genes_for_nmf -= ribo_genes
-#
-#         #print(adata)
-#         return
-#
-#
-#
-#
-#
-#         self.X = X
-#         self.objective = objective
-#         self.parameters = parameters
-#         self.mu = np.mean(self.X.values)
-#         self.var = np.var(self.X.values)
-#
-#         if dtype == 'Float32':
-#             self.dtype = torch.float32
-#         elif dtype == 'Float16':
-#             self.dtype = torch.float16
-#
-#         if self.objective == 'poisson':
-#             self.Beta = 1
-#         elif self.objective == 'gaussian':
-#             self.Beta = 2
-#         else:
-#             ValueError("Objective should be either 'gaussian' or 'poisson'")
-#
-#         start_alg_time = time.time()
-#
-#         data = ARD_NMF(self.X, self.objective)
-#
-#         self.channel_names = data.channel_names
-#         self.sample_names = data.sample_names
-#
-#         if phi is None:
-#             print("Computing dispersion parameter.")
-#             self.phi = self.compute_phi()
-#         else:
-#             self.phi = phi
-#
-#         self.W, self.H, self.cost = run_method_engine(data, a, self.phi, b, self.Beta, prior_on_W, prior_on_H, K0, tolerance, max_iter)
-#         self.alg_time = time.time() - start_alg_time
-#
-#         self.W, self.H, self.nsig = self.normalize_nmf_output()
-#         self.W, self.H = self.nmf_to_pd()
-#
-#     def compute_nmf_result(self, cut_norm=0.5, cut_diff=1.0):
-#         """Assigns NMF_Result object to result attribute."""
-#         self.result = NMF_Result(self.X, self.W, self.H, cut_norm=cut_norm, cut_diff=cut_diff, objective=self.objective)
-#
-#     def compute_phi(self):
-#         """
-#         Compute dispersion parameter (phi).
-#         """
-#         return self.var / (self.mu ** (2 - self.Beta))
-#
-#     def normalize_nmf_output(self, active_thresh=1e-5):
-#         """
-#         Prunes output from ARD-NMF.
-#         """
-#         nonzero_idx = (np.sum(self.H, axis=1) * np.sum(self.W, axis=0)) > active_thresh
-#         W_active = self.W[:, nonzero_idx]
-#         H_active = self.H[nonzero_idx, :]
-#         nsig = np.sum(nonzero_idx)
-#
-#         # Normalize W and transfer weight to H matrix
-#         W_weight = np.sum(W_active, axis=0)
-#         W_final = W_active / W_weight
-#         H_final = W_weight[:, np.newaxis] * H_active
-#
-#         return W_final, H_final, nsig
-#
-#     def nmf_to_pd(self):
-#         """
-#         Collapse NMF output to pandas dataframe.
-#         """
-#         sig_names = [str(i) for i in range(1,self.nsig+1)]
-#         return pd.DataFrame(data=self.W, index=self.channel_names, columns=sig_names), pd.DataFrame(data=self.H, index=sig_names, columns=self.sample_names)
+    _ = marker_heatmap(X, signatures, H.sort_values('max_id').max_id)
+    plt.savefig(os.path.join(outdir, "marker_heatmap.pdf"), dpi=100, bbox_inches='tight')
+
+    print("   * Computing consensus matrix")
+    cmatrix, _ = consensus_cluster(os.path.join(outdir, 'nmf_output.h5'))
+    f,d = consensus_matrix(cmatrix, n_clusters=max_k_iter)
+
+    cmatrix.to_csv(os.path.join(outdir, 'consensus_matrix.tsv'), sep='\t')
+    d.to_csv(os.path.join(outdir, 'consensus_assign.tsv'), sep='\t')
+    plt.savefig(os.path.join(outdir, 'consensus_matrix.pdf'), dpi=100, bbox_inches='tight')
+
+    store = pd.HDFStore(os.path.join(outdir,'nmf_output.h5'),'a')
+    store['consensus'] = d
+    store.close()
+    # ------------------------------------------------------------------}
+
+    if inplace:
+        join_nmf_output_to_anndata(adata, os.path.join(outdir,'nmf_output.h5'))
+        return
+    else:
+        return H,W,markers,signatures

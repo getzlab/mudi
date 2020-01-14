@@ -18,6 +18,7 @@ setup(
         "openpyxl",
         "gprofiler",
         "tzlocal",
-        "get_version"
+        "get_version",
+        "signatureanalyzer"
     ]
 )
