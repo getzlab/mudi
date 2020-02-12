@@ -1,12 +1,16 @@
 # mudi
 A collection of python-based single-cell utilities and pipelines.
 
-Author: Shankara Anand
-Email: sanand@broadinstitute.edu
+###### **Author**: Shankara Anand
 
-![](./mudi.jpg)
+###### **Email**: sanand@broadinstitute.edu
 
-For more information about mudis, the amazing dog breed this package is named after, please visit https://en.wikipedia.org/wiki/Mudi.
+<p align="center">
+  ![](./mudi.jpg)
+</p>
+
+_For more information about mudis, the amazing dog breed this package is named after, please visit_ https://en.wikipedia.org/wiki/Mudi.
+
 ---
 
 ### Requirements
@@ -15,52 +19,44 @@ For more information about mudis, the amazing dog breed this package is named af
     * Seurat>=3.0.0
     * scran>=1.10.1
 
-#### Submodules
+### Installation
+```{bash}
+git clone https://github.com/broadinstitute/mudi.git
 
-`git clone --recursive https://github.com/broadinstitute/mudi.git`
+cd mudi
+pip install -e .
+```
 
-or if you have already cloned:
+_Support for PIP coming soon._
 
-`git submodule update --init --recursive`
+### Package Details
 
-Then, `cd` into `mudi` and:
+###### Includes
+* wrappers for sequence level QC (ie `FastQC`)
+* pre-processing recipes for raw count data with qc & filtering helpers
+* wrappers for single-cell normalization (i.e. `scran`)
+* wrapper for `signatureanalyzer` (bayesian NMF)
+*
 
-`pip install -e .`
----
+###### Examples: see `./examples`
+* `normalization`: general processing & normalization
+* `cell_types`: assigning cell-types
 
-### Usage
-
-#### Raw Pre-processing of Count Data
+### Example Usage
 
 ```{python}
 import mudi as md
-from mudi.process import recipe
 
-adata = recipe(
+adata = md.recipe(
   list_of_10x_files,
   min_genes=200,
   min_cells=3,
   compute_doublets=True,
   remove_doublets=False,
-  verbose=True
+  verbose=True,
+  norm='scran'
 )
-
 ```
-
-#### Cell-Type Identification
-
-```python
-from mudi.markers import build_marker_set, sub_cluster_and_rename
-
-# Find marker genes, label clusters in each "groupby" group based on markers annotation
-# Stored in adata.obs['cell_type']
-scores, aggr, labels = build_marker_set(adata, heart_markers, groupby='louvain', key_added='cell_type' thresh=1e-2)
-
-# Sub-clustering can be done on broader categories
-# ex. this sub-clusters the "Myocardial Pericyte" cells and renames the newly created clusters
-_ = sub_cluster_and_rename(adata, 'cell_type', ['Myocardial Pericyte'], heart_markers)
-```
----
 
 Examples and testing coming soon...
 
