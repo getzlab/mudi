@@ -34,7 +34,7 @@ _Support for PIP coming soon._
 * pre-processing recipes for raw count data with qc & filtering helpers
 * wrappers for single-cell normalization (i.e. `scran`)
 * wrapper for `signatureanalyzer` (bayesian NMF)
-*
+* wrapper for `gprofiler`
 
 ###### Examples: see `./examples`
 * `normalization`: general processing & normalization
