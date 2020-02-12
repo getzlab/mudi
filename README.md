@@ -1,9 +1,12 @@
 # mudi
-A collection of single-cell utilities and pipelines for the Getz Lab.
+A collection of python-based single-cell utilities and pipelines.
 
+Author: Shankara Anand
+Email: sanand@broadinstitute.edu
 
 ![](./mudi.jpg)
 
+For more information about mudis, the amazing dog breed this package is named after, please visit https://en.wikipedia.org/wiki/Mudi.
 ---
 
 ### Requirements
@@ -20,16 +23,17 @@ or if you have already cloned:
 
 `git submodule update --init --recursive`
 
+Then, `cd` into `mudi` and:
 
-
+`pip install -e .`
 ---
 
 ### Usage
 
-#### General Processing
+#### Raw Pre-processing of Count Data
 
-```python
-
+```{python}
+import mudi as md
 from mudi.process import recipe
 
 adata = recipe(
