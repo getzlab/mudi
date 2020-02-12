@@ -5,9 +5,7 @@ A collection of python-based single-cell utilities and pipelines.
 
 ###### **Email**: sanand@broadinstitute.edu
 
-<p align="center">
-  ![](./mudi.jpg)
-</p>
+![](./mudi.jpg)
 
 _For more information about mudis, the amazing dog breed this package is named after, please visit_ https://en.wikipedia.org/wiki/Mudi.
 
