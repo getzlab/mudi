@@ -1,19 +1,17 @@
 import rpy2.robjects as robjects
 from rpy2.robjects import pandas2ri
-from ..repos.anndata2ri import anndata2ri
+from rpy2.robjects import numpy2ri
 
 import scanpy as sc
 import scanpy.external as sce
 import numpy as np
-
-pandas2ri.activate()
-anndata2ri.activate()
+from anndata import AnnData
+import anndata2ri
 
 sct = robjects.r('''
         sct <- function(adata) {
             require(Seurat)
             require(sctransform)
-
             dat <- as.Seurat(adata, counts='X', data='X')
 
             # run sctransform & regress out percent mitochondrial reads
@@ -71,6 +69,10 @@ def pysctform(adata_i, num_hvg=3000):
         (stored in the scale.data slot) themselves.
 
     """
+    pandas2ri.activate()
+    anndata2ri.activate()
+    numpy2ri.activate()
+
     adata = adata_i.copy()
 
     # Hacky fix
@@ -79,9 +81,7 @@ def pysctform(adata_i, num_hvg=3000):
     adata = adata[:,np.array([x for x in adata.var_names if '_' not in x])]
 
     # To np.array for easy conversion to rpy2
-    adata.X = np.asarray(adata.layers['counts'].todense(),dtype=int)
-    del adata.layers['counts']
-    adata.raw = None
+    adata = AnnData(adata.X, obs=adata.obs, var=adata.var)
 
     print("Running scTransform...")
     results = sct(adata)

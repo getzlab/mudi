@@ -37,14 +37,21 @@ def join_nmf_output_to_anndata(adata: AnnData, filepath: str, cut_norm:float = 0
     H = pd.read_hdf(filepath,"H")
     X = pd.read_hdf(filepath,"X")
     W = pd.read_hdf(filepath,"W")
-    consensus_cluster = pd.read_hdf(filepath,"consensus")
+
     markers,signatures = select_markers(X, W, H, cut_norm=cut_norm, cut_diff=cut_diff)
 
     # Join to Obs
-    adata.obs = adata.obs.join(H.join(consensus_cluster))
+    adata.obs = adata.obs.join(H)
     adata.obs['max_id'] = adata.obs['max_id'].astype('category')
-    adata.obs['clusters'] = adata.obs['clusters'].astype('category')
-    adata.obs = adata.obs.rename(columns={'max_id':'nmf_id', 'clusters':'consensus_cluster'})
+
+    try:
+        adata.obs = adata.obs.join(pd.read_hdf(filepath,"consensus"))
+        adata.obs['clusters'] = adata.obs['clusters'].astype('category')
+        adata.obs = adata.obs.rename(columns={'clusters':'consensus_cluster'})
+    except:
+        pass
+
+    adata.obs = adata.obs.rename(columns={'max_id':'nmf_id'})
 
     adata.uns['signatures'] = list(H)[:-3]
     adata.obsm['X_nmf'] = H.iloc[:,:-3].values
@@ -73,6 +80,7 @@ def NMF(
     filter_mito: bool = True,
     inplace: bool = True,
     verbose: bool = False,
+    consensus_cluster_results: bool = False,
     **nmf_kwargs
     ):
     """
@@ -93,7 +101,9 @@ def NMF(
         * filter_mito: exclude mitochondrial genes (default: True)
         * inplace: whether or not to edit the AnnData object directly
             * False: returns H,W,markers,signatures (4 pd.DataFrame objects)
-        * verbose
+        * verbose: verbosity
+        * consensus_cluster_results: run consensus clustering (default: False)
+            * Very slow for 20K+ cells
         * nmf_kwargs: passed to signatureanalyzer.ardnmf
 
     Outputs:
@@ -131,7 +141,7 @@ def NMF(
     if input_type == 'raw':
         df = pd.DataFrame(data=adata.raw.X.toarray(), index=adata.obs_names, columns=adata.raw.var_names).T
     elif input_type == 'X':
-        df = pd.DataFrame(data=adata.X.toarray(), index=adata.obs_names, columns=adata.raw.var_names).T
+        df = pd.DataFrame(data=adata.X.toarray(), index=adata.obs_names, columns=adata.var_names).T
     else:
         assert input_type in adata.layers, "Please save input in adata.layers['{}']".format(input_type)
         df = pd.DataFrame(data=adata.layers['counts'].toarray(), index=adata.obs_names, columns=adata.var_names).T
@@ -204,21 +214,24 @@ def NMF(
     _ = marker_heatmap(X, signatures, H.sort_values('max_id').max_id)
     plt.savefig(os.path.join(outdir, "marker_heatmap.pdf"), dpi=100, bbox_inches='tight')
 
-    print("   * Computing consensus matrix")
-    cmatrix, _ = consensus_cluster(os.path.join(outdir, 'nmf_output.h5'))
-    f,d = consensus_matrix(cmatrix, n_clusters=max_k_iter)
+    if consensus_cluster_results:
+        print("   * Computing consensus matrix")
+        cmatrix, _ = consensus_cluster(os.path.join(outdir, 'nmf_output.h5'))
+        f,d = consensus_matrix(cmatrix, n_clusters=max_k_iter)
 
-    cmatrix.to_csv(os.path.join(outdir, 'consensus_matrix.tsv'), sep='\t')
-    d.to_csv(os.path.join(outdir, 'consensus_assign.tsv'), sep='\t')
-    plt.savefig(os.path.join(outdir, 'consensus_matrix.pdf'), dpi=100, bbox_inches='tight')
+        cmatrix.to_csv(os.path.join(outdir, 'consensus_matrix.tsv'), sep='\t')
+        d.to_csv(os.path.join(outdir, 'consensus_assign.tsv'), sep='\t')
+        plt.savefig(os.path.join(outdir, 'consensus_matrix.pdf'), dpi=100, bbox_inches='tight')
 
-    store = pd.HDFStore(os.path.join(outdir,'nmf_output.h5'),'a')
-    store['consensus'] = d
-    store.close()
+        store = pd.HDFStore(os.path.join(outdir,'nmf_output.h5'),'a')
+        store['consensus'] = d
+        store.close()
     # ------------------------------------------------------------------}
 
     if inplace:
         join_nmf_output_to_anndata(adata, os.path.join(outdir,'nmf_output.h5'))
         return
     else:
+        W = pd.read_hdf(os.path.join(outdir,'nmf_output.h5'), "W")
+        markers = pd.read_hdf(os.path.join(outdir,'nmf_output.h5'), "markers")
         return H,W,markers,signatures

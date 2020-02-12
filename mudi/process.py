@@ -16,19 +16,26 @@ import scanpy.external as sce
 from sklearn.manifold import TSNE
 import sys
 import scrublet as scr
-
+from typing import Union
 from anndata import AnnData
 from inspect import signature
 
 from .utils import scanpy_adata_loader
 from .utils import score_doublets
 from .utils import score_cc_genes
+from .norm import pyscran
 
 # For Numba
 import warnings
 warnings.filterwarnings('ignore')
 
-def bcs_by_group(obs, group='percent_mito', key='louvain', thresh=2, verbose=False):
+def bcs_by_group(
+    obs: pd.DataFrame,
+    group: str = 'percent_mito',
+    key: str = 'louvain',
+    thresh: float = 2,
+    verbose:bool = False
+    ) -> list:
     """
     Barcodes by Group
     ----------------------------
@@ -43,7 +50,6 @@ def bcs_by_group(obs, group='percent_mito', key='louvain', thresh=2, verbose=Fal
 
     Outputs:
         - bcs: selected barcodes
-
     """
     bcs = list()
 
@@ -62,7 +68,12 @@ def bcs_by_group(obs, group='percent_mito', key='louvain', thresh=2, verbose=Fal
 
     return bcs
 
-def filter_upper(adata, groups, verbose, **kwargs):
+def filter_upper(
+    adata: AnnData,
+    groups: list,
+    verbose: bool,
+    **kwargs
+    ) -> list:
     """
     Filter Upper
     ----------------------------
@@ -91,10 +102,29 @@ def filter_upper(adata, groups, verbose, **kwargs):
         set.intersection(*[set(bcs_by_group(adata.obs, group=g, verbose=verbose, **kwargs)) for g in groups])
         )
 
-def recipe(file_name, min_genes=200, min_cells=3, thresh=1.25, mito_thresh=None, \
-           groups=None, genome=None, regress_vars=None, regress_jobs=1, \
-           compute_doublets=True, remove_doublets=False, scrublet_key='batch',
-           hvg=None, qc=False, downstream=True, bbknn=None, verbose=False, **kwargs):
+def recipe(
+    file_name: Union[AnnData, str, list], \
+    min_genes: int = 200, \
+    min_cells: int = 3, \
+    thresh: float = 1.25, \
+    mito_thresh: Union[None,float] = None, \
+    groups: Union[None, str] = None, \
+    genome: Union[None, str] = None, \
+    norm: str = "library", \
+    scran_key: Union[None, str] = None, \
+    scran_res: float = 0.5, \
+    regress_vars: Union[None, str] = None, \
+    regress_jobs: int = 1, \
+    compute_doublets: bool = True, \
+    remove_doublets: bool = False, \
+    scrublet_key: str = 'batch', \
+    hvg: Union[None, dict] = None, \
+    qc: bool = False,
+    downstream: bool = True,
+    bbknn: Union[None, str] = None,
+    verbose: bool = False,
+    **kwargs
+    ) -> AnnData:
     """
     Recipe for single-cell processing.
     ----------------------------
@@ -104,6 +134,11 @@ def recipe(file_name, min_genes=200, min_cells=3, thresh=1.25, mito_thresh=None,
         - thresh: estimated threshold for qc-filtering
         - groups: qc-metrics to threshold over (default is percent_mito)
         - genome: genome build for loading scanpy object (usually not needed)
+        - norm: normalization method
+            * library: default
+            * scran: scran
+        - scran_key: scran key to normalize on - if not provided, will do course clustering
+        - scran_res: scran resolution for course clustering
         - regress_vars: variables to regress over
             *** Note: this will subset adata.X to highly variable genes
             *** Note: raw data will still be stores in adata.raw and adata.layers['counts']
@@ -159,7 +194,9 @@ def recipe(file_name, min_genes=200, min_cells=3, thresh=1.25, mito_thresh=None,
     if 'batch' not in list(adata.obs):
         adata.obs['batch'] = '1'
 
-    # Doublets
+    # ---------------------------------
+    # Compute Doublets
+    # ---------------------------------
     if compute_doublets:
         score_doublets(adata, key=scrublet_key)
 
@@ -167,7 +204,9 @@ def recipe(file_name, min_genes=200, min_cells=3, thresh=1.25, mito_thresh=None,
             print("Dropping {} doublets".format(sum(adata.obs['doublet'])))
             adata = adata[~adata.obs['doublet']]
 
+    # ---------------------------------
     # Compute Mitochondrial + Ribo Genes
+    # ---------------------------------
     mito_genes = adata.var_names.str.startswith('MT-')
     ribo_genes = adata.var_names.str.startswith('RPS') + adata.var_names.str.startswith('RPL')
 
@@ -179,10 +218,11 @@ def recipe(file_name, min_genes=200, min_cells=3, thresh=1.25, mito_thresh=None,
     if qc:
         return adata
 
+    # ---------------------------------
+    # Filter out barcodes
+    # ---------------------------------
     if thresh is not None:
         adata = adata[adata.obs.index.isin(filter_upper(adata.copy(), groups, thresh=thresh, verbose=verbose, **kwargs))]
-
-    adata.layers['counts'] = adata.X.copy()
 
     # Mito Threshold
     if mito_thresh is not None:
@@ -193,20 +233,34 @@ def recipe(file_name, min_genes=200, min_cells=3, thresh=1.25, mito_thresh=None,
         adata = adata[adata.obs['percent_mito'] < mito_thresh]
         print("Filtered {} / {} barcodes.".format(prev_cells-adata.shape[0], prev_cells))
 
-    # Normalize & HVG
+    adata.layers['counts'] = adata.X.copy()
+
+    # ---------------------------------
+    # Normalization
+    # ---------------------------------
     sc.pp.normalize_per_cell(adata, counts_per_cell_after=10000)
     sc.pp.log1p(adata)
 
     # Save Raw
     adata.raw = adata.copy()
 
-    # Score cell-cycle
+    if norm=='library':
+        pass
+    elif norm=='scran':
+        adata = pyscran(adata, resolution=scran_res, scran_key=scran_key, hvg=hvg, log_norm=True)
+
+    # ---------------------------------
+    # Score cell-cycle genes
+    # ---------------------------------
     try:
         score_cc_genes(adata)
     except:
         if verbose: print("Unable to compute cell-cycle genes.")
         pass
 
+    # ---------------------------------
+    # Downstream processing
+    # ---------------------------------
     if downstream:
         sc.pp.highly_variable_genes(adata, **hvg)
 
@@ -214,8 +268,8 @@ def recipe(file_name, min_genes=200, min_cells=3, thresh=1.25, mito_thresh=None,
         if regress_vars is not None:
             adata = adata[:, adata.var['highly_variable']]
             sc.pp.regress_out(adata, regress_vars, n_jobs=regress_jobs)
-        sc.pp.scale(adata, max_value=10)
 
+        sc.pp.scale(adata, max_value=10)
         sc.tl.pca(adata, svd_solver='arpack', use_highly_variable=True)
 
         if bbknn is not None:
@@ -227,6 +281,7 @@ def recipe(file_name, min_genes=200, min_cells=3, thresh=1.25, mito_thresh=None,
         sc.tl.louvain(adata, resolution=1)
         sc.tl.umap(adata)
 
+    # Convert back to sparse if need-be
     try:
         adata.X = sparse.csr_matrix(adata.X)
     except:

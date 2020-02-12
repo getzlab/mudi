@@ -1,6 +1,6 @@
 import rpy2.robjects as robjects
 from rpy2.robjects import pandas2ri
-from ..repos.anndata2ri import anndata2ri
+import anndata2ri
 
 pandas2ri.activate()
 anndata2ri.activate()

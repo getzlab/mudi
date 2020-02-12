@@ -1,19 +1,22 @@
 import rpy2.robjects as robjects
 from rpy2.robjects import pandas2ri
-from ..repos.anndata2ri import anndata2ri
-
-pandas2ri.activate()
-anndata2ri.activate()
+from rpy2.robjects import numpy2ri
+import anndata2ri
 
 import scanpy as sc
 import scanpy.external as sce
 import numpy as np
+
+pandas2ri.activate()
+anndata2ri.activate()
+numpy2ri.activate()
+
 from typing import Union
 from anndata import AnnData
 
 scran = robjects.r('''
         scran <- function(M, groups, min.mean=0.1) {
-            require(scran)
+            suppressMessages(require(scran))
             return(computeSumFactors(M, clusters=groups, min.mean=min.mean))
         }
         ''')
@@ -47,22 +50,19 @@ def pyscran(
             Automatically returns log-normed w/ HVGs; if 'log_norm = False', will return
             only the scran-normalized counts
     """
-    # assert adata_i.layers['counts'], "Please provide raw counts in AnnData Object."
-
     if hvg is None:
         hvg = {'min_mean':0.0125, 'max_mean':3, 'min_disp':0.5}
 
     adata = adata_i.copy()
 
     if scran_key is None:
+        sc.pp.highly_variable_genes(adata, **hvg)
+        sc.pp.scale(adata, max_value=10)
+        sc.tl.pca(adata, svd_solver='arpack', use_highly_variable=True)
         sc.pp.neighbors(adata)
         sc.tl.louvain(adata, key_added='scran_groups', resolution=resolution)
     else:
         adata.obs['scran_groups'] = adata.obs[scran_key]
-
-    print(adata.obs.groupby('scran_groups').size())
-
-
 
     adata.obs['size_factors'] = scran(
         adata.layers['counts'].toarray().astype(int).T,

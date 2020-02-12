@@ -9,7 +9,7 @@ setup(
     install_requires=[
         "bbknn>=1.3.4",
         "cellxgene>=0.10.1",
-        "anndata>=0.6.21",
+        "anndata>=0.7.1",
         "scanpy>=1.4.3",
         "rpy2>=3.0.5",
         "torch>=1.1.0"
@@ -19,6 +19,8 @@ setup(
         "gprofiler",
         "tzlocal",
         "get_version",
-        "signatureanalyzer"
+        "signatureanalyzer",
+        "anndata2ri",
+        "ipywidgets" # Added for scanpy
     ]
 )

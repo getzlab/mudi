@@ -1,7 +1,6 @@
-
 import rpy2.robjects as robjects
 from anndata import AnnData
-from anndata2ri import anndata2ri
+import anndata2ri
 
 import rpy2.rinterface_lib.callbacks
 from rpy2.robjects import pandas2ri
