@@ -53,7 +53,7 @@ If we take a page from Bulk RNA-Seq differential expression, a core step before 
 A script is provided to compute this:
 
 ```
-Rscript comptue_disp.R -i inputs/raw_counts.csv \
+Rscript compute_disp.R -i inputs/raw_counts.csv \
                        -m ./de/diffexp/inputs/meta.csv \
                        -o ./de/diffexp/inputs/dispersions.tsv
 ```
