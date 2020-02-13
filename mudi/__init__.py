@@ -17,3 +17,5 @@ from .markers import to_xlsx
 
 from .nmf import nmf
 from .nmf import join_nmf_output_to_anndata
+
+__version__ = '0.0.0'
