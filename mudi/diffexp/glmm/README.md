@@ -1,6 +1,7 @@
 ### Differential Expression in Single-cell
 
 Author: Shankara Anand
+
 Date: 02/12/20
 
 _**Note**: this is intended for 10x Data which is assumed to be subject to overdispersion. A natural distribution to fit expression profiles to is negative-binomial._
@@ -9,9 +10,9 @@ Docker: `gcr.io/broad-cga-sanand-gtex/r36:latest`
 
 ---
 
-##### Pipeline
+### Pipeline
 
-######  1. Prepare Inputs
+####  1. Prepare Inputs
 
 We have the following needs before running the computation for differential expression:
 * Take an AnnData object and save its count matrices
@@ -45,7 +46,7 @@ This will result in the following directory structure:
   * raw_counts.parquet
 ```
 
-###### 2. Estimating Dispersions
+#### 2. Estimating Dispersions
 
 If we take a page from Bulk RNA-Seq differential expression, a core step before fitting negative binomial GLMs for each gene is estimating the appropriate dispersions. A GLM for negative binomial distribution is only defined with a stated dispersion. The tool we will be using in later steps is `lme4` - our statistical hammer to fit these models - can estimate dispersions per gene fit. However, this can by noisy and not converge with sparse-single-cell data. Thus we will use, `edgeR`' to estimate dispersions using `edgeR::estimateDisp`.
 
@@ -61,7 +62,7 @@ _**Note**: this is highly memory intensive and might take a few hours given the 
 
 _**Note**: run with_ `export OPENBLAS_NUM_THREADS=1` _to prevent overuse of unncessary threads._
 
-###### 3. Running lme4 Tests for Each Gene
+#### 3. Running lme4 Tests for Each Gene
 
 Now, we need to fit a negative binomial model for each gene, specify random and fixed effects, and test for a group of interest to generate our differential expression results. This would take a long time to loop through given each gene requires `n_groups`+1 (null) models to fit. This roughly takes minimum 5-10 minutes for 20K genes which could take up to 2.22 days minimum. Thes, we use `canine` to dynamically split up google compute nodes, `slurm` to dispatch the jobs and rapidly run all of these analyses.
 
