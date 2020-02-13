@@ -39,7 +39,7 @@ def prep_inputs(
     for v in meta_vars:
         assert v in list(adata.obs), print("{} not in adata.obs.".format(v))
 
-    assert groupby in metavars, "{} not in metavars".format(groupby)
+    assert groupby in meta_vars, "{} not in metavars".format(groupby)
 
     os.makedirs(diffexp_dir, exist_ok=True)
     os.makedirs(os.path.join(diffexp_dir, "inputs"), exist_ok=True)
