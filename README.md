@@ -39,6 +39,7 @@ _Support for PIP coming soon._
 ###### Examples: see `./examples`
 * `normalization`: general processing & normalization
 * `cell_types`: assigning cell-types
+* `ardnmf`: running ard-nmf via `signatureanalyzer`
 
 ### Example Usage
 
