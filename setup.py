@@ -14,13 +14,13 @@ setup(
         "rpy2>=3.0.5",
         "torch>=1.1.0"
         "scrublet",
-        "multicoreTSNE",
         "openpyxl",
         "gprofiler",
         "tzlocal",
         "get_version",
         "signatureanalyzer",
         "anndata2ri",
-        "ipywidgets" # Added for scanpy
+        "ipywidgets", # Added for scanpy,
+        "agutil"
     ]
 )

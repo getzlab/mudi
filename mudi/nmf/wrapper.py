@@ -20,7 +20,12 @@ See https://github.com/broadinstitute/getzlab-SignatureAnalyzer
 For more details about the method and implementation.
 """
 
-def join_nmf_output_to_anndata(adata: AnnData, filepath: str, cut_norm:float = 0, cut_diff:float = 0.1):
+def join_nmf_output_to_anndata(
+    adata: AnnData,
+    filepath: str,
+    cut_norm: float = 0,
+    cut_diff: float = 0.1
+    ):
     """
     Join ARD-NMF output to AnnData
     -----------------------
@@ -70,7 +75,7 @@ def join_nmf_output_to_anndata(adata: AnnData, filepath: str, cut_norm:float = 0
     _nmf_markers['values'] = markers.values
     adata.uns['nmf_markers'] = _nmf_markers
 
-def NMF(
+def nmf(
     adata: AnnData,
     nruns: int = 10,
     outdir: str = '.',
