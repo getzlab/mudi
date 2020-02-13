@@ -1,8 +1,8 @@
 ### Differential Expression in Single-cell
 
-Author: Shankara Anand
+**Author**: Shankara Anand
 
-Date: 02/12/20
+**Date**: 02/12/20
 
 _**Note**: this is intended for 10x Data which is assumed to be subject to overdispersion. A natural distribution to fit expression profiles to is negative-binomial._
 
