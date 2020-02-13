@@ -32,7 +32,7 @@ def dispatch(
     genes_dir = os.path.abspath(genes_dir)
     dispersions = os.path.abspath(dispersions)
 
-    genes = [x.split(".csv")[0] for x in os.listdir(genes_dir)][:64]
+    genes = [x.split(".csv")[0] for x in os.listdir(genes_dir)]
     print("Loaded {} genes.".format(len(genes)))
 
     conf = dict()
@@ -69,9 +69,9 @@ def dispatch(
     conf["script"] = ["set -e -o pipefail"]
     conf["script"].extend([
         "sudo docker run -v $CANINE_ROOT:$CANINE_ROOT --rm \
-                        --cpus $SLURM_CPUS_PER_TASK \
-                        --memory $(expr $SLURM_CPUS_PER_TASK '*' $SLURM_MEM_PER_CPU)MB \
-                        gcr.io/broad-cga-sanand-gtex/r36:latest Rscript --vanilla $SCRIPT -i $COUNTS -m $METADATA -d $DISP -f '{}' -o $CANINE_JOB_ROOT".format(model)
+                    --cpus $SLURM_CPUS_PER_TASK \
+                    --memory $(expr $SLURM_CPUS_PER_TASK '*' $SLURM_MEM_PER_CPU)MB \
+                    -t gcr.io/broad-cga-sanand-gtex/r36:latest Rscript --vanilla $SCRIPT -i $COUNTS -m $METADATA -d $DISP -f '{}' -o $CANINE_JOB_ROOT".format(model)
     ])
 
     if verbose:
