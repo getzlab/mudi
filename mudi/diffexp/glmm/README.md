@@ -1,8 +1,8 @@
 ### Differential Expression in Single-cell
 
-Author: Shankara Anand
+**Author**: Shankara Anand
 
-Date: 02/12/20
+**Date**: 02/12/20
 
 _**Note**: this is intended for 10x Data which is assumed to be subject to overdispersion. A natural distribution to fit expression profiles to is negative-binomial._
 
@@ -53,7 +53,7 @@ If we take a page from Bulk RNA-Seq differential expression, a core step before 
 A script is provided to compute this:
 
 ```
-Rscript comptue_disp.R -i inputs/raw_counts.csv \
+Rscript compute_disp.R -i inputs/raw_counts.csv \
                        -m ./de/diffexp/inputs/meta.csv \
                        -o ./de/diffexp/inputs/dispersions.tsv
 ```
