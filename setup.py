@@ -45,7 +45,8 @@ setup(
         "signatureanalyzer",
         "anndata2ri",
         "ipywidgets", # Added for scanpy,
-        "agutil"
+        "agutil",
+        "tqdm"
     ],
     package_data = {
     "":[

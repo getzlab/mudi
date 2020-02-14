@@ -1,2 +1,4 @@
-from .prep import prep_inputs
-from .run import dispatch
+from .glmm import prep_inputs
+from .glmm import dispatch
+from .glmm import compile_de_result
+from .glmm import compile_all_results
