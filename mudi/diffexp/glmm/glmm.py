@@ -16,6 +16,10 @@ import rpy2
 from rpy2.robjects.packages import importr
 
 """
+Storey Q-Values - https://github.com/StoreyLab/qvalue
+--------------------
+Python Wrapper
+
 Author: Francois Aguet
 https://github.com/broadinstitute/tensorqtl/blob/master/tensorqtl/rfunc.py
 """
@@ -65,6 +69,8 @@ def prep_inputs(
     Returns:
         None
     """
+    meta_vars = meta_vars.copy()
+
     if meta_vars is None:
         meta_vars = list(adata.obs)
     if genes_to_use is None:
@@ -73,7 +79,10 @@ def prep_inputs(
     for v in meta_vars:
         assert v in list(adata.obs), print("{} not in adata.obs.".format(v))
 
-    assert groupby in meta_vars, "{} not in metavars".format(groupby)
+    assert groupby in list(adata.obs), "{} not in adata.obs".format(groupby)
+
+    if groupby not in meta_vars:
+        meta_vars.append(groupby)
 
     os.makedirs(diffexp_dir, exist_ok=True)
     os.makedirs(os.path.join(diffexp_dir, "inputs"), exist_ok=True)
@@ -89,15 +98,14 @@ def prep_inputs(
         dtype=int
     )[genes_to_use]
 
-    print("{} barcodes".format(counts_df.shape[1]))
-    print("{} genes".format(counts_df.shape[0]))
+    print(" * {} barcodes".format(counts_df.shape[0]))
+    print(" * {} genes".format(counts_df.shape[1]))
 
     counts_df.T.to_csv(os.path.join(diffexp_dir, "inputs", "raw_counts.csv"))
     counts_df.T.to_parquet(os.path.join(diffexp_dir, "inputs", "raw_counts.parquet"))
 
-    meta_df = adata.obs[meta_vars].rename(
-        columns={'log1p_n_genes_by_counts':'loggenesxcounts'}
-    )
+    print(" * {} covariates".format(meta_vars))
+    meta_df = adata.obs[meta_vars]
 
     dummy_df = pd.get_dummies(meta_df[groupby])
     dummy_df = dummy_df.rename(columns={x:"groupby_"+x for x in dummy_df})
@@ -107,11 +115,11 @@ def prep_inputs(
     def save_slice(gene_i):
         gene = gene_i.replace("/",'_')
         try:
-            counts_df[gene_i].to_csv(os.path.join(diffexp_dir, "inputs", "genes", "{}.csv".format(gene)))
+            counts_df[gene_i].to_csv(os.path.join(diffexp_dir, "inputs", "genes", "{}.csv".format(gene)), header=False)
         except:
             print("Error with {}".format(gene))
 
-    print("Saving {} genes...".format(counts_df.shape[0]))
+    print(" * saving {} genes...".format(counts_df.shape[1]))
     _ = [x for x in save_slice(counts_df)]
 
 def dispatch(
@@ -258,8 +266,13 @@ def compile_all_results(output_dirs: list, canine_dir_name: str = "canine_output
 
     for idx,lab in enumerate(labs):
         group_df = s_df.iloc[idx::4,:].sort_values('p_val')
-        group_df['label'] = lab
-        group_df['qval'], pi0 = md.de.glmm.qvalue(np.array(group_df['p_val']))
+
+        if lab.startswith("groupby"):
+            group_df['label'] = "groupby"
+        else:
+            group_df['label'] = lab
+
+        group_df['qval'], pi0 = qvalue(np.array(group_df['p_val']))
 
         _s_df.append(group_df)
 

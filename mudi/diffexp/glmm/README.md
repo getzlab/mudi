@@ -88,3 +88,18 @@ md.de.glmm.dispatch(
 The model formula must be specified with the syntax `Y ~ `; aside from that, you are only limited by what covariates you would like to include. **This is only the null model.** This means that any groups that you are using to do your one vs. rest differential expression should NOT be represented here, only covariates (random and fixed effects) you would like to model.
 
 The transfer bucket must be accessible by your default account.
+
+#### 4. Compiling Results
+
+`mudi` provides code to post-process these results. It will return two full dataframes. One with the results from the liklihood ratio tests of each grouping vs. the null model, `p_df`, and a summary dataframe that just has each model with its corresponding log-fold changes and statistics for all covariates - i.e., how well did the model with the groups fit the data.
+
+Additionally, we compute `q-values` for each covariate/grouping across all genes where the negative-bionomial mixed-effect model converged (thanks to @franocis-a).
+
+```{python}
+import mudi as md
+
+# Provide a list of all output directories you want to use
+output_dirs = ["diffexp/canine_outputs"]
+
+p_df, s_df = md.de.glmm.compile_all_results(output_dirs)
+```
