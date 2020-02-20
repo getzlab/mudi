@@ -9,12 +9,13 @@ parser$add_argument("-o", "--output", help="Output file name.", required=TRUE, t
 args <- parser$parse_args()
 
 message("Loading inputs")
-# Load Counts
-counts <- read.table(args$input, sep=',', header=TRUE, check.names=FALSE)
-rownames(counts) <- counts$index
-hv_genes <- counts$index
 
-counts$index <- NULL
+# Load Counts
+counts <- read.table(counts.file, sep=',', header=TRUE, check.names=FALSE)
+rownames(counts) <- counts[,1]
+hv_genes <- counts[,1]
+
+counts[,1] <- NULL
 
 counts[] <- lapply(counts, function(x) {
     if(is.factor(x)) as.numeric(as.character(x)) else x
