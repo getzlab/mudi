@@ -3,7 +3,7 @@ import seaborn as sns
 import scanpy as sc
 import numpy as np
 
-def volcano_plot(
+def plot_volcano(
     de,
     thresh=20,
     ax=None,
@@ -13,7 +13,6 @@ def volcano_plot(
     xlabel=None,
     ylabel=None,
     gene_id='genes',
-    ptm_id=None,
     filter_noise=False,
     fix_extremes=True,
     arrow=False,
@@ -21,29 +20,29 @@ def volcano_plot(
     shuffle=True,
     gene_fontsize=10,
     only_plot_gene_symbol=True,
-    genes_to_label=None
+    genes_to_label=None,
+    c1='black',
+    c2='red'
     ):
     """
     Differential Expression Volcano Plot
     ---------------------
     Args:
         * de: pd.DataFrame of differentail expression results
-        * thresh: adj. pval threshold for differential expression (color)
+        * thresh: qval threshold for differential expression
         * ax: matplotlib.axis
         * xlim: x-limits for the volcano plot; automatically determined / centered
-            if not-provided, takes symmetric ceil of x-values
+            if not-provided
         * yax: column in dataframe for y-axis ('qval')
         * xax: column in dataframe for x-axis (usually log-fold-change)
-        * xlabel: xlabel
-        * ylabel: ylabel
-        * gene_id: column in dataframe for gene-labels
-        * filter_noise: remove noise
+        * gene_id: column in dataframe to gene-labels
+        * filter_noise: remove nosie
         * fix_extremes: fix-extremes
         * arrow: add arrows to each gene label
-        * label_percentile: percentile of genes on each neg/pos lfc to label
-        * shuffle: shuffle points
-        * gene_fontsize: size of gene-labels
-        * genes_to_label: list of genes you can provide to label with
+        * label_percentile: percentile of genes on each neg/pos to label
+        * shuffle
+        * gene_fontsize
+        * only_plot_gene_symbol
 
     Returns:
         * returns fig
@@ -52,10 +51,7 @@ def volcano_plot(
     from adjustText import adjust_text
 
     # Subset relevant Columns
-    if ptm_id in de:
-        de = de.loc[:,[xax, yax, gene_id, ptm_id, 'variableSites']]
-    else:
-        de = de.loc[:,[xax, yax, gene_id]]
+    ide = de.loc[:,[xax, yax, gene_id]]
 
     if xlim is None:
         _x = np.ceil(np.max(np.abs(de[xax])))
@@ -103,15 +99,16 @@ def volcano_plot(
         other_de[xax],
         np.abs(other_de['-logQ']),
         fit_reg=False,
-        scatter_kws={'s':12, 'alpha':0.5, 'color':'k','rasterized':True},
+        scatter_kws={'s':12, 'alpha':0.5, 'color':c1, 'rasterized':True},
         ax=ax,
     )
 
+    # Above Threshold
     sns.regplot(
         lowqval_de[xax],
         np.abs(lowqval_de['-logQ']),
         fit_reg=False,
-        scatter_kws={'s':12, 'alpha':0.5,'color':'r','rasterized':True},
+        scatter_kws={'s':12, 'alpha':0.5,'color':c2, 'rasterized':True},
         ax=ax,
     )
 
@@ -144,6 +141,7 @@ def volcano_plot(
     x = x[to_keep]
     y = y[to_keep]
     labels = labels[to_keep]
+
 
     # Additional genes to label
     if genes_to_label is not None:

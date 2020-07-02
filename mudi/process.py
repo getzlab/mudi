@@ -122,6 +122,7 @@ def recipe(
     qc: bool = False,
     downstream: bool = True,
     bbknn: Union[None, str] = None,
+    issparse: bool = False,
     verbose: bool = False,
     **kwargs
     ) -> AnnData:
@@ -151,6 +152,7 @@ def recipe(
         - downstream: if True, continues with downstream processing
         - bbknn: if specified, performs light-weight batch correction on the provided
             variable
+        - issparse: if provided an AnnData object, if hte X variable is alreayd in sparse format
 
     Outputs:
         - adata: AnnData Object
@@ -180,7 +182,8 @@ def recipe(
     # ---------------------------------
     if isinstance(file_name, AnnData):
         adata = file_name
-        adata.X = sparse.csr_matrix(adata.X)
+        if not issparse:
+            adata.X = sparse.csr_matrix(adata.X)
     else:
         adata = scanpy_adata_loader(file_name, genome=genome)
 
