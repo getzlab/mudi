@@ -44,7 +44,7 @@ def aggr_markers(adata, uns='rank_genes_groups', params=['names','scores','pvals
     Assumes 'rank_genes_groups' has already been called to find group markers
     in AnnData Object.
     """
-    assert adata.uns['rank_genes_groups'], 'Compute differentially expressed genes first.'
+    assert adata.uns[uns], 'Compute differentially expressed genes first.'
 
     joint = pd.concat(
         [pd.DataFrame(pd.DataFrame(adata.uns[uns][param]).T.stack()).reset_index().rename(columns={'level_0':'cluster','level_1':'no.',0:param})
