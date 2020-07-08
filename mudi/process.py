@@ -1,19 +1,12 @@
 import numpy as np
-import h5py
 import scipy
-from scipy.sparse import csc_matrix
-from scipy.io import mmread
 from scipy import sparse
-import gc
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
 from tqdm import tqdm
 import os
-import time
 import scanpy as sc
 import scanpy.external as sce
-from sklearn.manifold import TSNE
 import sys
 import scrublet as scr
 from typing import Union
@@ -23,7 +16,6 @@ from inspect import signature
 from .utils import scanpy_adata_loader
 from .utils import score_doublets
 from .utils import score_cc_genes
-from .norm import pyscran
 
 # For Numba
 import warnings
@@ -250,6 +242,8 @@ def recipe(
     if norm=='library':
         pass
     elif norm=='scran':
+        from .norm import pyscran
+
         adata = pyscran(adata, resolution=scran_res, scran_key=scran_key, hvg=hvg, log_norm=True)
 
     # ---------------------------------
