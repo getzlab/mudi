@@ -3,7 +3,7 @@ import seaborn as sns
 import scanpy as sc
 import numpy as np
 
-def plot_volcano(
+def volcano_plot(
     de,
     thresh=20,
     ax=None,
