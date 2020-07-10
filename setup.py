@@ -29,6 +29,7 @@ setup(
         'mudi.qc',
         'mudi.qc.fastqc',
         'mudi.integration',
+        'mudi.interp',
     ],
     install_requires=[
         "bbknn>=1.3.4",
