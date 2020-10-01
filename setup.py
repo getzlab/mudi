@@ -47,7 +47,8 @@ setup(
         "anndata2ri",
         "ipywidgets", # Added for scanpy,
         "agutil",
-        "tqdm"
+        "tqdm",
+        "pyscenic"
     ],
     package_data = {
     "":[
