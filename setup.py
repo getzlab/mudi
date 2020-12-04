@@ -29,6 +29,7 @@ setup(
         'mudi.qc',
         'mudi.qc.fastqc',
         'mudi.integration',
+        'mudi.interp',
     ],
     install_requires=[
         "bbknn>=1.3.4",
@@ -46,7 +47,8 @@ setup(
         "anndata2ri",
         "ipywidgets", # Added for scanpy,
         "agutil",
-        "tqdm"
+        "tqdm",
+        "pyscenic"
     ],
     package_data = {
     "":[

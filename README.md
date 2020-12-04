@@ -3,7 +3,7 @@ A collection of python-based single-cell utilities and pipelines.
 
 ###### **Author**: Shankara Anand
 
-###### **Email**: sanand@broadinstitute.edu
+###### **Email**: sanand@broadinstitute.org
 
 ![](./hazel.png)
 
