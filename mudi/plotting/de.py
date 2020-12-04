@@ -170,8 +170,8 @@ def volcano_plot(
         if x[i] > xlim[0] and x[i] < xlim[1]:
             texts.append(ax.text(x[i], y[i], txt, ha='center', va='center', fontsize=gene_fontsize))
     if arrow:
-        adjust_text(texts, arrowprops=dict(arrowstyle='->', color='blue'))
+        adjust_text(texts, arrowprops=dict(arrowstyle='->', color='blue'), ax=ax)
     else:
-        adjust_text(texts)
+        adjust_text(texts, ax=ax)
 
     return ax
