@@ -116,7 +116,7 @@ def recipe(
     bbknn: Union[None, str] = None,
     issparse: bool = False,
     verbose: bool = False,
-    make_sparse: bool = False,
+    make_sparse: bool = True,
     **kwargs
     ) -> AnnData:
     """
