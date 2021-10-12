@@ -116,6 +116,7 @@ def recipe(
     bbknn: Union[None, str] = None,
     issparse: bool = False,
     verbose: bool = False,
+    make_sparse: bool = True,
     **kwargs
     ) -> AnnData:
     """
@@ -145,6 +146,7 @@ def recipe(
         - bbknn: if specified, performs light-weight batch correction on the provided
             variable
         - issparse: if provided an AnnData object, if hte X variable is alreayd in sparse format
+        - make_sparse: if True, converts the hte X variable of the AnnData to be returned to sparse format
 
     Outputs:
         - adata: AnnData Object
@@ -279,9 +281,10 @@ def recipe(
         sc.tl.umap(adata)
 
     # Convert back to sparse if need-be
-    try:
-        adata.X = sparse.csr_matrix(adata.X)
-    except:
-        pass
+    if make_sparse:
+        try:
+            adata.X = sparse.csr_matrix(adata.X)
+        except:
+            pass
 
     return adata
