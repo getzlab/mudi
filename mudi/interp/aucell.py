@@ -5,7 +5,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
-def create_gene_signatures(W_df: pd.DataFrame, subtype_idx: str = 'Subgroup', weight_idx: str = 'max_norm'):
+def create_gene_signatures(
+    W_df: pd.DataFrame,
+    subtype_idx: str = 'subtype',
+    weight_idx: str = 't',
+    n=None
+    ):
     """
     Create gene signatures.
     ---------------------------
@@ -14,14 +19,24 @@ def create_gene_signatures(W_df: pd.DataFrame, subtype_idx: str = 'Subgroup', we
             --> (genes x weights,subtype)
         * subtype_idx: str column in W_df subtype to make individual gene signatures for
         * weight_idx: str column in W_df weight to use
+        * n: random sample to draw
     Returns:
         * Dictionary
             * subtype --> pyscenic.genesig.GeneSignature
     """
-    return [GeneSignature(
-                sig,
-                W_df[W_df[subtype_idx]==sig][[weight_idx]].to_dict()[weight_idx]
-            ) for sig in np.unique(W_df[subtype_idx])]
+    if n == None:
+        return [GeneSignature(
+            sig,W_df[W_df[subtype_idx]==sig][[weight_idx]].to_dict()[weight_idx]
+        ) for sig in np.unique(W_df[subtype_idx])]
+    else:
+        gene_signatures = list()
+
+        for sig in np.unique(W_df[subtype_idx]):
+            sig_df = W_df[W_df['subtype']==sig][[weight_idx]]
+            sig_df = sig_df.iloc[np.random.choice(sig_df.shape[0], n, replace=False)]
+            gene_signatures.append(GeneSignature(sig, sig_df.to_dict()[weight_idx]))
+
+        return gene_signatures
 
 def auc(
     adata,

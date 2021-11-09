@@ -62,5 +62,10 @@ setup(
         "Intended Audience :: Science/Research",
         "Topic :: Scientific/Engineering :: Bio-Informatics",
     ],
+    entry_points={
+        'console_scripts':[
+            'mudi-baucell = mudi.interp.bootstrap_aucell:main',
+        ]
+    },
     license="MIT"
 )
