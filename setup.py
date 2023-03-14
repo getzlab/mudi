@@ -48,7 +48,8 @@ setup(
         "ipywidgets", # Added for scanpy,
         "agutil",
         "tqdm",
-        "pyscenic"
+        "pyscenic",
+        "ctxcore"
     ],
     package_data = {
     "":[
