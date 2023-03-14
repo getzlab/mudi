@@ -1,5 +1,5 @@
 from pyscenic.aucell import aucell
-from pyscenic.genesig import GeneSignature
+from ctxcore.genesig import GeneSignature
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
